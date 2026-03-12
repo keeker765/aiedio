@@ -8,22 +8,22 @@
 
 ## 各岗位本周具体目标 (Action Items)
 
-### 1. [前端联队] (client) - 对应 人选 4 & 5
+### 1. [前端联队] (client) - 人选 Liu Shuaizhen & Li Xinying
 
 - **UI/UX 设计师**：规划并切图出一个极为简洁的“测试主控台”页面（带有一个“测试抓取”和一个“生成并提交”的大按钮）。
 - **前端交互工程师**：初始化 React/Vue 工程框架，绘制上述页面，按按钮后能使用 \fetch/axios\ 成功调用后端的 \/api/test-generate\ 接口，并在屏幕上弹窗显示后端返回的结果。
 
-### 2. [后端中枢] (backend) - 对应 人选 3
+### 2. [后端中枢] (backend) - 对应 Lu Yi
 
 - **架构/开发**：在 \backend/src\ 内部搭建并运行极其干净的 FastAPI Web 服务。
 - **业务接口**：对外暴露一个 \POST /api/test-generate\ 接口。接收前端的指令，简单校验后放行，并假装把它交给 AI 引擎（可以通过简单调用 Python 函数或 Redis 队列），最后给前端返回 \{"status": "success", "message": "任务已下发"}\。
 
-### 3. [架构师与 AI 引擎] (core_engine) - 对应 人选 1 (你)
+### 3. [架构师与 AI 引擎] (core_engine) - 对应 Wu Ke
 
 - **核心类桩代码**：在 \core_engine/src\ 里写出 \AssetBuilder\ 的空壳（Stub）。
 - **连通性测试**：在这个类里面接入一次最便宜的大模型 API（比如文心一言或智谱的免费版），当接收到后端的触发信号时，只要能问大模型一句“你好”并拿到纯文本回答，就算大功告成！
 
-### 4. [爬虫与数据] (crawler) - 对应 人选 2
+### 4. [爬虫与数据] (crawler) - 对应 Hu Yuxuan
 
 - **试水脚本**：在 \crawler/src\ 里写一个轻量级的 Python \
   equests\ 脚本。
@@ -34,4 +34,3 @@
 ## 验收流程 (Definition of Done)
 
 当四个端的人把代码提交到各自的 \client\, \backend\ 等目录后，只要能实现**点击页面按钮 → 后端打印接收 → 引擎成功调用 API → 页面弹窗通知**，本周宣告满分毕业，周末愉快休息。
-
