@@ -79,3 +79,14 @@ git config --global user.email "填写你注册Github的真实邮箱"
 
 ---
 > 🚀 **“开始你的 Milestone 1 通关挑战吧！遇到 Bug 不要慌，发终端截图给 AI 或群里呼叫支援。”** 
+
+---
+
+### 📌 第七步：认领这周的任务 (项目发包大厅)
+
+代码环境装好了，该接客了！请所有人务必点击下方链接，看看你要负责写哪几行代码、你们的代码长什么样：
+
+- 🎯 **[本周紧急任务指派（Milestone 1）](./docs/milestones/week1_M1_skeleton.md)** <- **所有人必看！这是大家本周末的死任务！**
+- 🛡️ **[团队角色与职责划界（详细版）](./docs/architecture/03_team_roles.md)** <- 不知道自己该负责干嘛看这里。
+- ⚙️ **[宏观系统工作流（技术架构）](./docs/architecture/01_system_workflow.md)** <- 看看咱们前后端大模型是怎么连成一条生命线的。
+
