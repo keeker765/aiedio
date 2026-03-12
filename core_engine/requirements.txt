@@ -1,0 +1,4 @@
+moviepy
+langchain
+openai
+requests
