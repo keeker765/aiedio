@@ -2,3 +2,4 @@ moviepy
 langchain
 openai
 requests
+zhipuai
