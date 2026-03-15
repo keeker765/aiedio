@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Aiedio 前端测试 - Milestone 1</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            text-align: center;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .button-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+        button {
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn-backend {
+            background: #667eea;
+            color: white;
+        }
+        .btn-ai {
+            background: #ff6b81;
+            color: white;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .result-box {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            text-align: left;
+            font-family: monospace;
+            display: none;
+        }
+        .result-box.show {
+            display: block;
+        }
+        .loading {
+            display: none;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        .loading.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Milestone 1 测试</h1>
+    
+    <div class="button-container">
+        <button class="btn-backend" onclick="pingBackend()">🔧 测试后端</button>
+        <button class="btn-ai" onclick="callAI()">🤖 测试AI</button>
+    </div>
+
+    <!-- 加载动画 -->
+    <div class="loading" id="loading"></div>
+
+    <!-- 结果显示框 -->
+    <div class="result-box" id="result"></div>
+
+    <script>
+        // 显示加载动画
+        function showLoading(message) {
+            document.getElementById('loading').innerHTML = '⏳ ' + message;
+            document.getElementById('loading').classList.add('show');
+        }
+
+        // 隐藏加载动画
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('show');
+        }
+
+        // 显示结果
+        function showResult(type, message, data = null) {
+            const resultBox = document.getElementById('result');
+            let html = '';
+            
+            if (type === 'success') {
+                html = `
+                    <div style="color: #28a745; font-weight: bold; margin-bottom: 10px;">✅ 成功</div>
+                    <div>${message}</div>
+                `;
+            } else {
+                html = `
+                    <div style="color: #dc3545; font-weight: bold; margin-bottom: 10px;">❌ 失败</div>
+                    <div>${message}</div>
+                `;
+            }
+            
+            if (data) {
+                html += `<div style="margin-top: 10px; font-size: 12px; color: #999;">${data}</div>`;
+            }
+            
+            resultBox.innerHTML = html;
+            resultBox.classList.add('show');
+        }
+
+        // 测试后端 (对应 Lu Yi 的工作)
+        function pingBackend() {
+            showLoading('正在连接后端服务...');
+            hideLoading();
+            
+            fetch('http://localhost:8000/ping')
+                .then(res => res.text())
+                .then(data => {
+                    hideLoading();
+                    showResult('success', '后端响应: ' + data);
+                })
+                .catch(err => {
+                    hideLoading();
+                    showResult('error', '后端连接失败: ' + err.message, '请确认后端是否已启动 (http://localhost:8000)');
+                });
+        }
+
+        // 测试AI (对应 Lu Yi + Wu Ke 的协作)
+        function callAI() {
+            showLoading('正在调用AI服务...');
+            
+            fetch('http://localhost:8000/ai-test')
+                .then(res => res.text())
+                .then(data => {
+                    hideLoading();
+                    showResult('success', 'AI响应: ' + data);
+                })
+                .catch(err => {
+                    hideLoading();
+                    showResult('error', 'AI调用失败: ' + err.message, '请确认后端和AI服务是否正常');
+                });
+        }
+    </script>
+</body>
+</html>
