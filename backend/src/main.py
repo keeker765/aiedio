@@ -6,7 +6,8 @@ from pydantic import BaseModel
 
 import datetime
 
-
+# 📍更新：导入 AI 引擎
+from core_engine.src.asset_builder import AI_Engine
 
 app = FastAPI(
 
