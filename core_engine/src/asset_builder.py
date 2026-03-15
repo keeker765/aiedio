@@ -4,8 +4,8 @@ import zhipuai
 # ============================================================
 # 🧠 Wu Ke's AI Engine — AssetBuilder / WuKe_AI_Engine
 # backend 调用方式（直接导入）：
-#   from core_engine.src.asset_builder import WuKe_AI_Engine
-#   result = WuKe_AI_Engine.generate("你好")
+#   from core_engine.src.asset_builder import AI_Engine
+#   result = AI_Engine.generate("你好")
 # ============================================================
 
 # API Key 从环境变量读取，不要把真实 Key 硬编码进代码里！
@@ -13,7 +13,7 @@ import zhipuai
 _API_KEY = os.getenv("ZHIPU_API_KEY", "")
 
 
-class WuKe_AI_Engine:
+class AI_Engine:
     """
     AI 核心引擎，负责对接智谱 GLM 大模型 API，生成文本/视频脚本。
     目前实现：文本生成（GLM-4-Flash 免费版）
