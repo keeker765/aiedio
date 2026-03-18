@@ -19,10 +19,14 @@
 
 ## 2. User Story Complexity (3 pts)
 
-| US   | Complexity | Analysis |
-| ---- | ---------- | -------- |
-| US-1 | High       | LLM multi-step reasoning, Prompt engineering, creative quality control |
-| US-4 | Medium     | Distributed tasks (Crawler + API calls + Video encoding + Subtitle generation) but relatively independent stages |
+| US   | Complexity |
+| ---- | ---------- |
+| US-1 | High       |
+| US-4 | Medium     |
+
+**Why US-1 is High**: Requires a 4-step sequential LLM chain (Topic → Outline → Scenes → Shots) where each step's output feeds the next — no parallelism possible. Creative quality is subjective, hard to validate automatically, and demands iterative Prompt tuning. Output must be structured JSON for downstream consumption.
+
+**Why US-4 is Medium**: 4 sub-modules (Crawler / Video API / Subtitles / Compositing) have clear interfaces and can be developed independently in parallel. Relies on mature libraries (MoviePy/FFmpeg) and API integration (Seedance) — complexity lies in orchestration, not algorithm design.
 
 ---
 
