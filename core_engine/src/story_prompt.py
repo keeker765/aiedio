@@ -97,7 +97,21 @@ def generate_stories(lang: str = "en"):
 
 
 if __name__ == "__main__":
+    import json as _json
     parser = argparse.ArgumentParser(description="Generate storyboards from GitHub trends")
     parser.add_argument("--lang", default="en", choices=["en", "zh"], help="Output language (default: en)")
     args = parser.parse_args()
-    generate_stories(lang=args.lang)
+    results = generate_stories(lang=args.lang)
+
+    # Save results to JSON file for demo
+    out_path = os.path.join(_ROOT, "core_engine", "src", "generated_storyboards.json")
+    output = []
+    for r in results:
+        try:
+            scenes = _json.loads(r["story"])
+        except (_json.JSONDecodeError, TypeError):
+            scenes = r["story"]
+        output.append({"trend": r["trend"], "storyboard": scenes})
+    with open(out_path, "w", encoding="utf-8") as f:
+        _json.dump(output, f, ensure_ascii=False, indent=2)
+    print(f"\nSaved to {out_path}")
