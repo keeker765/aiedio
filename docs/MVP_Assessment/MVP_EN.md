@@ -28,7 +28,7 @@
 
 ### US-4: One-Click Composition — 🟡 Medium
 
-- **Decoupled modules**: 4 sub-modules (Crawler / Video API / Subtitles / Compositing) with clear interfaces, can be developed in parallel
+- **Decoupled modules**: 5 sub-modules (Crawler / Story Generation / Video API / Subtitles / Compositing) with clear interfaces, can be developed in parallel
 - **Mature toolchain**: Relies on MoviePy/FFmpeg and Video Gen API with sufficient documentation
 - **Complexity in orchestration layer**, not algorithm design
 
