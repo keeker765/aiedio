@@ -4,7 +4,7 @@
 
 ---
 
-## 1. MVP Scope Determination (5 pts)
+## 1. MVP Scope Determination
 
 **选择的2个 User Stories**：
 
@@ -17,7 +17,7 @@
 
 ---
 
-## 2. User Story Complexity (3 pts)
+## 2. User Story Complexity
 
 ### US-1: Narrative Flow — 🔴 High
 
@@ -43,7 +43,7 @@
 
 ---
 
-## 3. User Story Importance (2 pts)
+## 3. User Story Importance
 
 | US   | Impact     |
 | ---- | ---------- |
@@ -52,7 +52,7 @@
 
 ---
 
-## 4. MVP Completeness (2 pts)
+## 4. MVP Completeness
 
 用户从**热点发现(爬虫) → AI创意(故事板) → 视频生成 → 自动合成**的闭环中，获得发布就绪的短视频。
 
@@ -60,7 +60,7 @@
 
 ---
 
-## 5. MVP Minimalism (2 pts)
+## 5. MVP Minimalism
 
 | US   | 能删？                     |
 | ---- | -------------------------- |
@@ -71,7 +71,7 @@
 
 ---
 
-## 6. MVP Realism (2 pts)
+## 6. MVP Realism
 
 **5人团队能完成吗？**
 

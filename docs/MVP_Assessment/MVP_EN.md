@@ -4,7 +4,7 @@
 
 ---
 
-## 1. MVP Scope Determination (5 pts)
+## 1. MVP Scope Determination
 
 **Selected 2 User Stories**:
 
@@ -17,7 +17,7 @@
 
 ---
 
-## 2. User Story Complexity (3 pts)
+## 2. User Story Complexity
 
 ### US-1: Narrative Flow — 🔴 High
 
@@ -43,7 +43,7 @@
 
 ---
 
-## 3. User Story Importance (2 pts)
+## 3. User Story Importance
 
 | US   | Impact     |
 | ---- | ---------- |
@@ -52,7 +52,7 @@
 
 ---
 
-## 4. MVP Completeness (2 pts)
+## 4. MVP Completeness
 
 Users can obtain a publish-ready short video through a complete automation loop: **Trend discovery (Crawler) → AI creativity (Storyboard) → Video generation → Automatic compositing**.
 
@@ -60,7 +60,7 @@ Users can obtain a publish-ready short video through a complete automation loop:
 
 ---
 
-## 5. MVP Minimalism (2 pts)
+## 5. MVP Minimalism
 
 | US   | Can Delete?                                         |
 | ---- | --------------------------------------------------- |
@@ -71,7 +71,7 @@ Users can obtain a publish-ready short video through a complete automation loop:
 
 ---
 
-## 6. MVP Realism (2 pts)
+## 6. MVP Realism
 
 **Can 5-person team complete it?**
 
