@@ -49,20 +49,7 @@ def call_llm(prompt: str, lang: str = "en") -> str:
 
 def build_story_prompt(trend: dict, lang: str = "en") -> str:
     """Build a storyboard generation prompt from a single trend item."""
-    if lang == "zh":
-        return (
-            f"你是一个短视频创意策划师。\n"
-            f"以下是一个当前热门话题：\n"
-            f"- 平台: {trend['platform']}\n"
-            f"- 标题: {trend['title']}\n"
-            f"- 热度: {trend['hot_value']}\n\n"
-            f"请基于这个话题，生成一个4场景的短视频故事板，包含：\n"
-            f"1. 每个场景的画面描述\n"
-            f"2. 对应的旁白/台词\n"
-            f"3. 推荐的视觉风格\n"
-            f"请用JSON格式返回，格式如下：\n"
-            f'{{"scenes": [{{"scene_id": 1, "visual": "...", "narration": "...", "style": "..."}}]}}'
-        )
+    lang_instruction = "Write all content in Chinese." if lang == "zh" else "Write all content in English."
     return (
         f"You are a short-video creative director.\n"
         f"Here is a currently trending topic:\n"
@@ -73,6 +60,7 @@ def build_story_prompt(trend: dict, lang: str = "en") -> str:
         f"1. Visual description for each scene\n"
         f"2. Corresponding narration/dialogue\n"
         f"3. Recommended visual style\n"
+        f"{lang_instruction}\n"
         f"Return in JSON format as follows:\n"
         f'{{"scenes": [{{"scene_id": 1, "visual": "...", "narration": "...", "style": "..."}}]}}'
     )
