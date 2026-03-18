@@ -100,4 +100,18 @@
 
 ---
 
+## 8. Implementation Tools (技术工具栈)
+
+| 层级 | 工具 | 用途 |
+| ---- | ---- | ---- |
+| 后端框架 | FastAPI (Python 3.10+) | REST API、任务队列、数据流 |
+| 前端框架 | React / Vue | 用户界面、视频预览、操作面板 |
+| AI/LLM | LangChain + LLM API | 多步推理链、故事板生成 |
+| 视频生成 | Seedance 2.0 API | AI视频片段生成 |
+| 视频合成 | MoviePy + FFmpeg | 剪辑、转场、字幕、背景音乐、导出 MP4 |
+| 爬虫 | Requests + BeautifulSoup | 热点话题采集（知乎/GitHub等） |
+| 版本控制 | Git + GitHub | 协作开发、代码管理 |
+
+---
+
 **提交日期**：2026年3月29日

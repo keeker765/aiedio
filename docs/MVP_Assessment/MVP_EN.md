@@ -100,4 +100,18 @@ Users can obtain a publish-ready short video through a complete automation loop:
 
 ---
 
+## 8. Implementation Tools (Technology Stack)
+
+| Layer | Tool | Purpose |
+| ----- | ---- | ------- |
+| Backend | FastAPI (Python 3.10+) | REST API, task queue, data flow |
+| Frontend | React / Vue | User interface, video preview, dashboard |
+| AI/LLM | LangChain + LLM API | Multi-step reasoning chain, storyboard generation |
+| Video Generation | Seedance 2.0 API | AI video clip generation |
+| Video Compositing | MoviePy + FFmpeg | Editing, transitions, subtitles, BGM, MP4 export |
+| Crawler | Requests + BeautifulSoup | Hot topic collection (Zhihu/GitHub etc.) |
+| Version Control | Git + GitHub | Team collaboration, code management |
+
+---
+
 **Submission Date**: March 29, 2026
