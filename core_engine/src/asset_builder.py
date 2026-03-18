@@ -2,43 +2,31 @@ import os
 import zhipuai
 
 # ============================================================
-# 🧠 Wu Ke's AI Engine — AssetBuilder / WuKe_AI_Engine
-# backend 调用方式（直接导入）：
+# Wu Ke's AI Engine — AssetBuilder / WuKe_AI_Engine
+# Usage from backend (direct import):
 #   from core_engine.src.asset_builder import AI_Engine
-#   result = AI_Engine.generate("你好")
+#   result = AI_Engine.generate("hello")
 # ============================================================
 
-# API Key 从环境变量读取，不要把真实 Key 硬编码进代码里！
-# 使用前在终端执行：$env:ZHIPU_API_KEY = "你的真实key"
+# API Key is read from environment variable. Never hardcode real keys!
+# Before running, execute in terminal: $env:ZHIPU_API_KEY = "your_real_key"
 _API_KEY = os.getenv("ZHIPU_API_KEY", "")
 
 
 class AI_Engine:
-    """
-    AI 核心引擎，负责对接智谱 GLM 大模型 API，生成文本/视频脚本。
-    目前实现：文本生成（GLM-4-Flash 免费版）
-    """
+    """Core AI engine that interfaces with ZhipuAI GLM API for text/video script generation."""
 
     @staticmethod
     def generate(prompt: str) -> str:
-        """
-        接受一段用户 prompt，返回 AI 生成的文本结果（字符串）。
-
-        参数:
-            prompt (str): 前端/后端传入的用户指令
-
-        返回:
-            str: AI 生成的文本
-        """
+        """Accept a user prompt and return AI-generated text."""
         if not _API_KEY:
-            # API Key 未配置时，返回一段占位回复，不让整个服务崩溃
-            return f"[占位回复] AI引擎待激活。收到指令: '{prompt}'"
+            return f"[Placeholder] AI engine not activated. Received: '{prompt}'"
 
         client = zhipuai.ZhipuAI(api_key=_API_KEY)
         response = client.chat.completions.create(
-            model="glm-4-flash",   # 免费额度版本
+            model="glm-4-flash",
             messages=[
-                {"role": "system", "content": "你是一个帮助生成视频脚本和内容创意的 AI 助手。"},
+                {"role": "system", "content": "You are an AI assistant that helps generate video scripts and creative content."},
                 {"role": "user", "content": prompt}
             ]
         )
