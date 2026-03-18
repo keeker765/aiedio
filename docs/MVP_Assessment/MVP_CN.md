@@ -24,6 +24,7 @@
 - **多步顺序依赖**：4步LLM链（主题 → 大纲 → 场景 → 分镜），每步输出是下一步输入，无法并行
 - **质量控制难**：创意输出主观，难以自动验证，需反复迭代Prompt
 - **格式约束严格**：输出必须是结构化JSON，供下游视频生成消费
+- **视频提示词对齐**：生成的场景描述必须精确到足以通过Seedance API产出连贯视频片段——含糊或不一致的描述会导致无法使用的输出
 
 ### US-4: One-Click Composition — 🟡 Medium
 
@@ -102,15 +103,15 @@
 
 ## 8. Implementation Tools (技术工具栈)
 
-| 层级 | 工具 | 用途 |
-| ---- | ---- | ---- |
-| 后端框架 | FastAPI (Python 3.10+) | REST API、任务队列、数据流 |
-| 前端框架 | React / Vue | 用户界面、视频预览、操作面板 |
-| AI/LLM | LangChain + LLM API | 多步推理链、故事板生成 |
-| 视频生成 | Seedance 2.0 API | AI视频片段生成 |
-| 视频合成 | MoviePy + FFmpeg | 剪辑、转场、字幕、背景音乐、导出 MP4 |
-| 爬虫 | Requests + BeautifulSoup | 热点话题采集（知乎/GitHub等） |
-| 版本控制 | Git + GitHub | 协作开发、代码管理 |
+| 层级     | 工具                     | 用途                                 |
+| -------- | ------------------------ | ------------------------------------ |
+| 后端框架 | FastAPI (Python 3.10+)   | REST API、任务队列、数据流           |
+| 前端框架 | React / Vue              | 用户界面、视频预览、操作面板         |
+| AI/LLM   | LangChain + LLM API      | 多步推理链、故事板生成               |
+| 视频生成 | Seedance 2.0 API         | AI视频片段生成                       |
+| 视频合成 | MoviePy + FFmpeg         | 剪辑、转场、字幕、背景音乐、导出 MP4 |
+| 爬虫     | Requests + BeautifulSoup | 热点话题采集（知乎/GitHub等）        |
+| 版本控制 | Git + GitHub             | 协作开发、代码管理                   |
 
 ---
 
