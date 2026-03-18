@@ -58,6 +58,17 @@ def health_check():
     }
 
 
+@app.get("/ping")
+def ping():
+    return "pong - backend is alive!"
+
+
+@app.get("/ai-test")
+def ai_test():
+    result = AI_Engine.generate("Give me a one-sentence video idea about technology trends.")
+    return result
+
+
 
 # ============================================================
 
