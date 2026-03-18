@@ -2,12 +2,18 @@ from fastapi import FastAPI
 
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi.responses import FileResponse
+
 from pydantic import BaseModel
 
 import datetime
 
+import os
+
 # 📍更新：导入 AI 引擎
 from core_engine.src.asset_builder import AI_Engine
+
+_CLIENT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "client")
 
 app = FastAPI(
 
@@ -56,6 +62,11 @@ def health_check():
         "message": "The back-end central control is operating normally!"
 
     }
+
+
+@app.get("/ui")
+def serve_frontend():
+    return FileResponse(os.path.join(_CLIENT_DIR, "index.html"))
 
 
 @app.get("/ping")
