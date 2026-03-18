@@ -21,16 +21,25 @@
 
 ### US-1: Narrative Flow — 🔴 High
 
-- **Sequential dependency**: 4-step LLM chain (Topic → Outline → Scenes → Shots), each step's output feeds the next — no parallelism
-- **Quality control difficult**: Creative output is subjective, hard to validate automatically, requires iterative Prompt tuning
-- **Strict format constraint**: Output must be structured JSON for downstream video generation
-- **Video prompt alignment**: Generated scene descriptions must be precise enough to produce coherent video clips via Video Gen API — vague or inconsistent prompts lead to unusable output
+- **Sequential dependency**: 4-step LLM chain (Topic → Outline → Scenes → Shots)
+  - Each step's output feeds the next — no parallelism
+- **Quality control difficult**: Creative output is subjective
+  - Hard to validate automatically, requires iterative Prompt tuning
+- **Strict format constraint**: Output must be structured JSON
+  - For downstream video generation
+- **Video prompt alignment**: Scene descriptions must be precise enough
+  - To produce coherent video clips via Video Gen API
+  - Vague or inconsistent prompts lead to unusable output
 
 ### US-4: One-Click Composition — 🟡 Medium
 
-- **Decoupled modules**: 5 sub-modules (Crawler / Story Generation / Video API / Subtitles / Compositing) with clear interfaces, can be developed in parallel
-- **Mature toolchain**: Relies on MoviePy/FFmpeg and Video Gen API with sufficient documentation
-- **Complexity in orchestration layer**, not algorithm design
+- **Decoupled modules**: 5 sub-modules with clear interfaces
+  - Crawler / Story Generation / Video API / Subtitles / Compositing
+  - Can be developed in parallel
+- **Mature toolchain**: Relies on MoviePy/FFmpeg and Video Gen API
+  - Sufficient documentation available
+- **Complexity in orchestration layer**
+  - Not algorithm design
 
 ---
 
