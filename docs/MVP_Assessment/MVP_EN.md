@@ -75,11 +75,11 @@ Users can obtain a publish-ready short video through a complete automation loop:
 
 **Workload Distribution**:
 
-- Wu Ke (Core Engine): US-1 = 50 hours
-- Lu Yi (Backend): Data flow, queues, storage = 25 hours
-- Hu Yuxuan (Crawler): US-4 crawler part = 15 hours
-- Liu Shuaizhen (Frontend Interaction): State management, API integration, business logic = 5 hours
-- Li Xinying (Frontend UI/UX): Component styling, responsive layout, motion effects = 5 hours
+- Wu Ke (Core Engine): US-1 story generation = 25 hours
+- Lu Yi (Backend): Data flow, queues, API routes = 20 hours
+- Hu Yuxuan (Crawler): US-4 crawler + data pipeline = 20 hours
+- Liu Shuaizhen (Frontend Interaction): State management, API integration, business logic = 20 hours
+- Li Xinying (Frontend UI/UX): Component styling, responsive layout, motion effects = 15 hours
 
 **Total**: ~100 hours / 800 available = Reasonable workload
 
