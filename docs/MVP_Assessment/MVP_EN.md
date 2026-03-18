@@ -24,12 +24,12 @@
 - **Sequential dependency**: 4-step LLM chain (Topic → Outline → Scenes → Shots), each step's output feeds the next — no parallelism
 - **Quality control difficult**: Creative output is subjective, hard to validate automatically, requires iterative Prompt tuning
 - **Strict format constraint**: Output must be structured JSON for downstream video generation
-- **Video prompt alignment**: Generated scene descriptions must be precise enough to produce coherent video clips via Seedance API — vague or inconsistent prompts lead to unusable output
+- **Video prompt alignment**: Generated scene descriptions must be precise enough to produce coherent video clips via Video Gen API — vague or inconsistent prompts lead to unusable output
 
 ### US-4: One-Click Composition — 🟡 Medium
 
 - **Decoupled modules**: 4 sub-modules (Crawler / Video API / Subtitles / Compositing) with clear interfaces, can be developed in parallel
-- **Mature toolchain**: Relies on MoviePy/FFmpeg and Seedance API with sufficient documentation
+- **Mature toolchain**: Relies on MoviePy/FFmpeg and Video Gen API with sufficient documentation
 - **Complexity in orchestration layer**, not algorithm design
 
 ---
@@ -85,7 +85,7 @@ Users can obtain a publish-ready short video through a complete automation loop:
 **Main Risks**:
 
 - LLM multi-step reasoning quality → Multiple Prompt templates mitigation
-- Seedance API rate limiting → Early communication with quota + Plan B
+- Video Gen API rate limiting → Early communication with quota + Plan B
 
 **Answer**: ✅ Achievable
 
@@ -108,7 +108,7 @@ Users can obtain a publish-ready short video through a complete automation loop:
 | Backend           | FastAPI (Python 3.10+)   | REST API, task queue, data flow                   |
 | Frontend          | React / Vue              | User interface, video preview, dashboard          |
 | AI/LLM            | LangChain + LLM API      | Multi-step reasoning chain, storyboard generation |
-| Video Generation  | Seedance 2.0 API         | AI video clip generation                          |
+| Video Generation  | Video Gen API            | AI video clip generation                          |
 | Video Compositing | MoviePy + FFmpeg         | Editing, transitions, subtitles, BGM, MP4 export  |
 | Crawler           | Requests + BeautifulSoup | Hot topic collection (Zhihu/GitHub etc.)          |
 | Version Control   | Git + GitHub             | Team collaboration, code management               |

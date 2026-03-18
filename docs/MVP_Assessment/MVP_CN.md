@@ -24,12 +24,12 @@
 - **多步顺序依赖**：4步LLM链（主题 → 大纲 → 场景 → 分镜），每步输出是下一步输入，无法并行
 - **质量控制难**：创意输出主观，难以自动验证，需反复迭代Prompt
 - **格式约束严格**：输出必须是结构化JSON，供下游视频生成消费
-- **视频提示词对齐**：生成的场景描述必须精确到足以通过Seedance API产出连贯视频片段——含糊或不一致的描述会导致无法使用的输出
+- **视频提示词对齐**：生成的场景描述必须精确到足以通过Video Gen API产出连贯视频片段——含糊或不一致的描述会导致无法使用的输出
 
 ### US-4: One-Click Composition — 🟡 Medium
 
 - **模块可解耦**：4个子模块（爬虫 / 视频API / 字幕 / 合成）接口清晰，可分工并行开发
-- **成熟工具链**：依赖MoviePy/FFmpeg和Seedance API，文档充足
+- **成熟工具链**：依赖MoviePy/FFmpeg和Video Gen API，文档充足
 - **复杂度集中在编排层**，而非算法设计
 
 ---
@@ -85,7 +85,7 @@
 **主要风险**：
 
 - LLM多步推理质量 → 多套Prompt模板缓解
-- Seedance API限流 → 早期沟通配额 + Plan B
+- Video Gen API限流 → 早期沟通配额 + Plan B
 
 **答案**：✅ 可实现
 
@@ -108,7 +108,7 @@
 | 后端框架 | FastAPI (Python 3.10+)   | REST API、任务队列、数据流           |
 | 前端框架 | React / Vue              | 用户界面、视频预览、操作面板         |
 | AI/LLM   | LangChain + LLM API      | 多步推理链、故事板生成               |
-| 视频生成 | Seedance 2.0 API         | AI视频片段生成                       |
+| 视频生成 | Video Gen API            | AI视频片段生成                       |
 | 视频合成 | MoviePy + FFmpeg         | 剪辑、转场、字幕、背景音乐、导出 MP4 |
 | 爬虫     | Requests + BeautifulSoup | 热点话题采集（知乎/GitHub等）        |
 | 版本控制 | Git + GitHub             | 协作开发、代码管理                   |
