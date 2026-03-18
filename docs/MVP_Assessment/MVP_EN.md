@@ -19,14 +19,17 @@
 
 ## 2. User Story Complexity (3 pts)
 
-| US   | Complexity |
-| ---- | ---------- |
-| US-1 | High       |
-| US-4 | Medium     |
+### US-1: Narrative Flow — 🔴 High
 
-**Why US-1 is High**: Requires a 4-step sequential LLM chain (Topic → Outline → Scenes → Shots) where each step's output feeds the next — no parallelism possible. Creative quality is subjective, hard to validate automatically, and demands iterative Prompt tuning. Output must be structured JSON for downstream consumption.
+- **Sequential dependency**: 4-step LLM chain (Topic → Outline → Scenes → Shots), each step's output feeds the next — no parallelism
+- **Quality control difficult**: Creative output is subjective, hard to validate automatically, requires iterative Prompt tuning
+- **Strict format constraint**: Output must be structured JSON for downstream video generation
 
-**Why US-4 is Medium**: 4 sub-modules (Crawler / Video API / Subtitles / Compositing) have clear interfaces and can be developed independently in parallel. Relies on mature libraries (MoviePy/FFmpeg) and API integration (Seedance) — complexity lies in orchestration, not algorithm design.
+### US-4: One-Click Composition — 🟡 Medium
+
+- **Decoupled modules**: 4 sub-modules (Crawler / Video API / Subtitles / Compositing) with clear interfaces, can be developed in parallel
+- **Mature toolchain**: Relies on MoviePy/FFmpeg and Seedance API with sufficient documentation
+- **Complexity in orchestration layer**, not algorithm design
 
 ---
 
