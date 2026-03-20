@@ -8,14 +8,14 @@
 
 **Selected 2 core User Stories (US-4 decomposed into 4 Sub-Stories)**:
 
-| US | Feature | Rationale |
-| ---- | ------------------------------------------------- | ------------------------ |
-| **US-1** | **Narrative Flow (Storyboard generation)** | **Core AI-driven creativity** |
-| **US-4** | **One-Click Composition (Auto video pipeline)** | **Complete automation loop** |
-| ↳ US-4.1 | Auto Data Acquisition (Crawler) | Scrapes trending topics as creative input |
-| ↳ US-4.2 | Script Copywriting (Story Generation) | Distills trend data into video text structure |
-| ↳ US-4.3 | AI Video Clip Generation (Video Gen API) | Calls model to produce visual footage |
-| ↳ US-4.4 | Subtitle & Effects Compositing | Aligns audio/video timeline, delivers final MP4 |
+| US       | Feature                                         | Rationale                                       |
+| -------- | ----------------------------------------------- | ----------------------------------------------- |
+| **US-1** | **Narrative Flow (Storyboard generation)**      | **Core AI-driven creativity**                   |
+| **US-4** | **One-Click Composition (Auto video pipeline)** | **Complete automation loop**                    |
+| ↳ US-4.1 | Auto Data Acquisition (Crawler)                 | Scrapes trending topics as creative input       |
+| ↳ US-4.2 | Script Copywriting (Story Generation)           | Distills trend data into video text structure   |
+| ↳ US-4.3 | AI Video Clip Generation (Video Gen API)        | Calls model to produce visual footage           |
+| ↳ US-4.4 | Subtitle & Effects Compositing                  | Aligns audio/video timeline, delivers final MP4 |
 
 **Excluded Rationale**: US-2 (Character continuity - future) / US-3 (Brand control - future) / US-5 (Latency optimization)
 
@@ -40,18 +40,22 @@
 Modules are decoupled with clear interfaces and can be developed in parallel; complexity is in the orchestration layer.
 
 #### US-4.1 Auto Data Acquisition — 🟢 Low
+
 - Crawler logic is deterministic with well-defined interfaces
 - No complex algorithms involved
 
 #### US-4.2 Script Copywriting — 🟡 Medium
+
 - Relies on LLM for stable information extraction
 - Requires structured output to connect upstream and downstream
 
 #### US-4.3 AI Video Clip Generation — 🔴 High
+
 - Must handle network latency and Video Gen API rate limits
 - Requires async request state management and retry logic
 
 #### US-4.4 Subtitle & Effects Compositing — 🟡 Medium
+
 - Relies on mature toolchain (MoviePy / FFmpeg)
 - Requires precise multi-track timeline synchronization
 
@@ -59,13 +63,13 @@ Modules are decoupled with clear interfaces and can be developed in parallel; co
 
 ## 3. User Story Importance
 
-| US | Impact |
-| --- | --- |
-| US-1 | ⭐⭐⭐⭐⭐ |
-| US-4.1 Auto Data Acquisition | ⭐⭐⭐⭐ |
-| US-4.2 Script Copywriting | ⭐⭐⭐⭐⭐ |
-| US-4.3 AI Video Clip Generation | ⭐⭐⭐⭐⭐ |
-| US-4.4 Subtitle & Effects Compositing | ⭐⭐⭐⭐ |
+| US                                    | Impact     |
+| ------------------------------------- | ---------- |
+| US-1                                  | ⭐⭐⭐⭐⭐ |
+| US-4.1 Auto Data Acquisition          | ⭐⭐⭐⭐   |
+| US-4.2 Script Copywriting             | ⭐⭐⭐⭐⭐ |
+| US-4.3 AI Video Clip Generation       | ⭐⭐⭐⭐⭐ |
+| US-4.4 Subtitle & Effects Compositing | ⭐⭐⭐⭐   |
 
 ---
 
@@ -79,12 +83,15 @@ Users can obtain a publish-ready short video through a complete automation loop:
 
 ## 5. MVP Minimalism
 
-| US   | Can Delete?                                         |
-| ---- | --------------------------------------------------- |
-| US-1 | ❌ No creativity = No AI value                      |
-| US-4 | ❌ No crawler and compositing = No product delivery |
+| US | Can Delete? |
+| --- | --- |
+| US-1 | ❌ No creativity = No AI value |
+| US-4.1 Auto Data Acquisition | ❌ No data source = No content input |
+| US-4.2 Script Copywriting | ❌ No script = Cannot drive video generation |
+| US-4.3 AI Video Clip Generation | ❌ No video = No product core |
+| US-4.4 Subtitle & Effects Compositing | ❌ No compositing = No deliverable output |
 
-**Answer**: ✅ Minimal (Both 2 USs are essential)
+**Answer**: ✅ Minimal (US-1 and every US-4 sub-story are all essential)
 
 ---
 
