@@ -6,12 +6,16 @@
 
 ## 1. MVP Scope Determination
 
-**Selected 2 User Stories**:
+**Selected 2 core User Stories (US-4 decomposed into 4 Sub-Stories)**:
 
-| US   | Feature                                           | Rationale                |
+| US | Feature | Rationale |
 | ---- | ------------------------------------------------- | ------------------------ |
-| US-1 | Narrative Flow (Story board generation)           | Core AI auto-creativity  |
-| US-4 | One-Click Composition (Crawler+Video+Compositing) | Complete automation loop |
+| **US-1** | **Narrative Flow (Storyboard generation)** | **Core AI-driven creativity** |
+| **US-4** | **One-Click Composition (Auto video pipeline)** | **Complete automation loop** |
+| ↳ US-4.1 | Auto Data Acquisition (Crawler) | Scrapes trending topics as creative input |
+| ↳ US-4.2 | Script Copywriting (Story Generation) | Distills trend data into video text structure |
+| ↳ US-4.3 | AI Video Clip Generation (Video Gen API) | Calls model to produce visual footage |
+| ↳ US-4.4 | Subtitle & Effects Compositing | Aligns audio/video timeline, delivers final MP4 |
 
 **Excluded Rationale**: US-2 (Character continuity - future) / US-3 (Brand control - future) / US-5 (Latency optimization)
 
@@ -31,24 +35,37 @@
   - To produce coherent video clips via Video Gen API
   - Vague or inconsistent prompts lead to unusable output
 
-### US-4: One-Click Composition — 🟡 Medium
+### US-4: One-Click Composition (4 Sub-Stories) — 🟡 Medium (overall)
 
-- **Decoupled modules**: 5 sub-modules with clear interfaces
-  - Crawler / Story Generation / Video API / Subtitles / Compositing
-  - Can be developed in parallel
-- **Mature toolchain**: Relies on MoviePy/FFmpeg and Video Gen API
-  - Sufficient documentation available
-- **Complexity in orchestration layer**
-  - Not algorithm design
+Modules are decoupled with clear interfaces and can be developed in parallel; complexity is in the orchestration layer.
+
+#### US-4.1 Auto Data Acquisition — 🟢 Low
+- Crawler logic is deterministic with well-defined interfaces
+- No complex algorithms involved
+
+#### US-4.2 Script Copywriting — 🟡 Medium
+- Relies on LLM for stable information extraction
+- Requires structured output to connect upstream and downstream
+
+#### US-4.3 AI Video Clip Generation — 🔴 High
+- Must handle network latency and Video Gen API rate limits
+- Requires async request state management and retry logic
+
+#### US-4.4 Subtitle & Effects Compositing — 🟡 Medium
+- Relies on mature toolchain (MoviePy / FFmpeg)
+- Requires precise multi-track timeline synchronization
 
 ---
 
 ## 3. User Story Importance
 
-| US   | Impact     |
-| ---- | ---------- |
+| US | Impact |
+| --- | --- |
 | US-1 | ⭐⭐⭐⭐⭐ |
-| US-4 | ⭐⭐⭐⭐⭐ |
+| US-4.1 Auto Data Acquisition | ⭐⭐⭐⭐ |
+| US-4.2 Script Copywriting | ⭐⭐⭐⭐⭐ |
+| US-4.3 AI Video Clip Generation | ⭐⭐⭐⭐⭐ |
+| US-4.4 Subtitle & Effects Compositing | ⭐⭐⭐⭐ |
 
 ---
 
