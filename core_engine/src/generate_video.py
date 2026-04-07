@@ -24,6 +24,7 @@ from core_engine.src.stages.post_processor import PostProcessor
 # Providers
 from core_engine.src.providers.video.fal_wan import FalWanProvider
 from core_engine.src.providers.video.dashscope_wan import DashScopeWanProvider
+from core_engine.src.providers.video.kling_v3_video import KlingVideoProvider
 from core_engine.src.providers.video.placeholder import PlaceholderVideoProvider
 from core_engine.src.providers.tts.edge_tts_provider import EdgeTTSProvider
 from core_engine.src.providers.image.zhipu_cogview import ZhipuImageProvider
@@ -33,11 +34,15 @@ from core_engine.src.providers.music.local_library import LocalMusicProvider
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def _select_video_provider(output_dir: str) -> FalWanProvider | DashScopeWanProvider | PlaceholderVideoProvider:
-    """Auto-select video provider based on available API keys."""
+def _select_video_provider(output_dir: str) -> KlingVideoProvider | FalWanProvider | DashScopeWanProvider | PlaceholderVideoProvider:
+    """Auto-select video provider based on available API keys.
+
+    Priority: Kling V3 > wan2.7 (DashScope) > Wan2.6 (fal.ai) > Placeholder
+    Both Kling V3 and wan2.7 use the same DASHSCOPE_API_KEY.
+    """
     if os.getenv("DASHSCOPE_API_KEY"):
-        print("  Video provider: Wan 2.7 via DashScope (阿里云百炼) ✅")
-        return DashScopeWanProvider(output_dir=output_dir)
+        print("  Video provider: Kling V3 via DashScope (kling/kling-v3-video-generation) ✅")
+        return KlingVideoProvider(output_dir=output_dir)
     if os.getenv("FAL_KEY"):
         print("  Video provider: Wan 2.6 via fal.ai ✅")
         return FalWanProvider(output_dir=output_dir)

@@ -217,3 +217,32 @@ class ScriptGenerator(BaseStage):
             visual_prompt="A dynamic technology overview scene",
             narration="Welcome to today's trending topic.",
         )]
+
+
+if __name__ == "__main__":
+    """Standalone storyboard test: python -m core_engine.src.stages.script_generator [--topic X]"""
+    import argparse, json, pathlib
+    from core_engine.src.pipeline.base import PipelineContext
+
+    parser = argparse.ArgumentParser(description="Generate storyboard only")
+    parser.add_argument("--topic", type=str, default=None)
+    parser.add_argument("--lang", default="zh", choices=["en", "zh"])
+    args = parser.parse_args()
+
+    ctx = PipelineContext(project_id="storyboard_test", project_dir="core_engine/output")
+    stage = ScriptGenerator(topic=args.topic, lang=args.lang)
+    stage.execute(ctx)
+
+    sb = ctx.storyboard
+    print(f"\n📋 Storyboard: {sb.title} ({sb.total_duration}s, {len(sb.scenes)} scenes)")
+    for s in sb.scenes:
+        print(f"\n  Scene {s.scene_id} [{s.duration}s] {s.style.value}")
+        print(f"  Prompt: {s.visual_prompt[:120]}...")
+        print(f"  Narration: {s.narration[:80]}")
+
+    out = pathlib.Path("core_engine/output/storyboards")
+    out.mkdir(parents=True, exist_ok=True)
+    import time
+    fname = out / f"storyboard_{int(time.time())}.json"
+    fname.write_text(sb.model_dump_json(indent=2), encoding="utf-8")
+    print(f"\n💾 Saved: {fname}")

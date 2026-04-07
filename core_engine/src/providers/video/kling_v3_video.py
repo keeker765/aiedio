@@ -17,6 +17,8 @@ from typing import Literal, Optional
 
 import requests
 
+from core_engine.src.providers.base import VideoProvider
+
 _API_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis"
 _TASK_URL = "https://dashscope.aliyuncs.com/api/v1/tasks"
 
@@ -26,8 +28,8 @@ def _log(msg: str) -> None:
     print(f"  [KlingVideo {ts}] {msg}", flush=True)
 
 
-class KlingVideoProvider:
-    """Kling V3 video generation via DashScope API."""
+class KlingVideoProvider(VideoProvider):
+    """Kling V3 video generation via DashScope API (implements VideoProvider interface)."""
 
     def __init__(
         self,
@@ -55,27 +57,61 @@ class KlingVideoProvider:
         }
         self._poll_headers = {"Authorization": f"Bearer {api_key}"}
 
-    # ── Public API ─────────────────────────────────────────────────
+    # ── VideoProvider interface ────────────────────────────────────
 
     def text_to_video(
         self,
         prompt: str,
-        duration: Literal[5, 10] = 10,
+        duration: Literal["5", "10", "15"] = "10",
+        resolution: Literal["720p", "1080p"] = "1080p",
+        aspect_ratio: str = "16:9",
+        audio_url: Optional[str] = None,
+        seed: Optional[int] = None,
     ) -> Path:
-        """Single prompt → video."""
+        """Single prompt T2V. duration '15' is capped to 10 (Kling V3 max is 10s)."""
+        dur = min(int(duration), 10)
         payload = {
             "model": self.model,
             "input": {"prompt": prompt},
             "parameters": {
                 "mode": self.mode,
                 "aspect_ratio": self.aspect_ratio,
-                "duration": duration,
+                "duration": dur,
                 "audio": self.audio,
                 "watermark": self.watermark,
             },
         }
-        _log(f"T2V submit — {duration}s {self.mode} model={self.model}")
+        _log(f"T2V submit — {dur}s {self.mode} model={self.model}")
         return self._submit_and_poll(payload)
+
+    def image_to_video(
+        self,
+        prompt: str,
+        image_url: str,
+        duration: Literal["5", "10", "15"] = "10",
+        resolution: Literal["480p", "720p", "1080p"] = "1080p",
+        audio_url: Optional[str] = None,
+    ) -> Path:
+        """First-frame I2V. duration '15' is capped to 10 (Kling V3 max is 10s)."""
+        dur = min(int(duration), 10)
+        payload = {
+            "model": self.model,
+            "input": {
+                "prompt": prompt,
+                "media": [{"type": "first_frame", "url": image_url}],
+            },
+            "parameters": {
+                "mode": self.mode,
+                "aspect_ratio": self.aspect_ratio,
+                "duration": dur,
+                "audio": self.audio,
+                "watermark": self.watermark,
+            },
+        }
+        _log(f"I2V submit — {dur}s {self.mode} first_frame={image_url[:60]}...")
+        return self._submit_and_poll(payload)
+
+    # ── Kling-specific: multi-shot ─────────────────────────────────
 
     def multi_shot_video(
         self,
@@ -83,14 +119,7 @@ class KlingVideoProvider:
         duration: Literal[5, 10] = 10,
         shot_type: Literal["intelligence", "customize"] = "customize",
     ) -> Path:
-        """Multi-shot video generation.
-
-        Args:
-            shots: list of {"index": int, "prompt": str, "duration": int}
-                   duration per shot should sum to total duration
-            duration: total video duration (5 or 10)
-            shot_type: "customize" for manually specified shots, "intelligence" for auto
-        """
+        """Multi-shot video. Each shot: {"index": int, "prompt": str, "duration": int}."""
         payload = {
             "model": self.model,
             "input": {
@@ -114,34 +143,9 @@ class KlingVideoProvider:
             _log(f"  Shot {s['index']}: {s['prompt'][:60]}...")
         return self._submit_and_poll(payload)
 
-    def image_to_video(
-        self,
-        prompt: str,
-        image_url: str,
-        duration: Literal[5, 10] = 10,
-    ) -> Path:
-        """First-frame I2V."""
-        payload = {
-            "model": self.model,
-            "input": {
-                "prompt": prompt,
-                "media": [{"type": "first_frame", "url": image_url}],
-            },
-            "parameters": {
-                "mode": self.mode,
-                "aspect_ratio": self.aspect_ratio,
-                "duration": duration,
-                "audio": self.audio,
-                "watermark": self.watermark,
-            },
-        }
-        _log(f"I2V submit — {duration}s {self.mode} first_frame={image_url[:60]}...")
-        return self._submit_and_poll(payload)
-
     # ── Internal ───────────────────────────────────────────────────
 
     def _submit_and_poll(self, payload: dict) -> Path:
-        # Submit
         resp = requests.post(_API_URL, headers=self._headers, json=payload, timeout=60)
         resp.raise_for_status()
         data = resp.json()
@@ -151,7 +155,6 @@ class KlingVideoProvider:
             raise RuntimeError(f"No task_id in response: {data}")
         _log(f"Task submitted — task_id={task_id} status={status}")
 
-        # Poll (max 30 min)
         for attempt in range(120):
             time.sleep(15)
             try:
@@ -174,15 +177,12 @@ class KlingVideoProvider:
                     raise RuntimeError(f"SUCCEEDED but no video_url: {poll_data}")
                 _log("Generation complete — downloading...")
                 return self._download_video(video_url)
-
             elif status == "FAILED":
                 code = poll_data.get("output", {}).get("code", "")
                 msg = poll_data.get("output", {}).get("message", "")
                 raise RuntimeError(f"Kling video task failed: {code} - {msg}")
-
             elif status in ("CANCELED", "UNKNOWN"):
                 raise RuntimeError(f"Kling video task {status}: {poll_data}")
-
             else:
                 elapsed = (attempt + 1) * 15
                 if attempt % 4 == 0:
