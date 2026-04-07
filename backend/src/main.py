@@ -1,158 +1,128 @@
-from fastapi import FastAPI
-
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-
 from fastapi.responses import FileResponse
-
 from pydantic import BaseModel
-
 import datetime
-
 import os
+import uuid
+import asyncio
+import json
 
-# 📍更新：导入 AI 引擎
-from core_engine.src.asset_builder import AI_Engine
+# 📍 导入组长定义的模块
+from core_engine.src.generate_video import run_pipeline
+from crawler.src.zhihu_spider import fetch_zhihu_hot
+from crawler.src.github_spider import fetch_github_hot
+from crawler.src.topic_search import search_topic_knowledge
 
 _CLIENT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "client")
 
 app = FastAPI(
-
     title="Aiedio Backend Hub",
-
-    description="This is the backend hub that Lu Yi is in charge of, responsible for connecting the frontend and the AI ​​engine.",
-
-    version="1.0.0"
-
+    description="Backend hub responsible for connecting crawler, frontend, and AI engine.",
+    version="1.1.0"
 )
 
-
-
+# 允许跨域
 app.add_middleware(
-
     CORSMiddleware,
-
-    allow_origins=["*"], 
-
+    allow_origins=["*"],
     allow_credentials=True,
-
-    allow_methods=["*"], 
-
+    allow_methods=["*"],
     allow_headers=["*"],
-
 )
 
+# --- 数据模型 ---
+class KnowledgeRequest(BaseModel):
+    topic: str
 
+class StoryboardRequest(BaseModel):
+    topic: str
+    knowledge: list
 
-class Interaction(BaseModel):
+class VideoRequest(BaseModel):
+    storyboard: dict
 
-    user_input: str
+# 存储异步任务状态的全局字典
+video_tasks = {}
 
-    action_type: str = "click"
+# --- B1: 热点 API ---
+@app.get("/api/trends")
+def get_trends():
+    """获取知乎和GitHub热点列表"""
+    zhihu = fetch_zhihu_hot()
+    github = fetch_github_hot()
+    return zhihu + github
 
+# --- B2: 话题知识 API ---
+@app.post("/api/knowledge")
+def get_knowledge(body: KnowledgeRequest):
+    """根据话题搜索背景知识"""
+    return search_topic_knowledge(body.topic)
 
+# --- B3: 分镜生成 API ---
+@app.post("/api/storyboard")
+def generate_storyboard(body: StoryboardRequest):
+    """调用 AI 引擎生成分镜脚本 (Storyboard)"""
+    # 仅运行脚本生成部分
+    result = run_pipeline(body.topic, body.knowledge, project_id=str(uuid.uuid4()))
+    return result["storyboard"]
 
-@app.get("/")
+# --- B4: 视频生成（异步逻辑） ---
+async def run_video_pipeline_async(task_id: str, storyboard: dict):
+    """模拟异步 Pipeline 运行并更新状态"""
+    video_tasks[task_id] = {"status": "processing", "progress": 0, "scene": 0}
+    
+    total_scenes = len(storyboard.get("scenes", []))
+    for i in range(1, total_scenes + 1):
+        # 模拟每幕生成时间
+        await asyncio.sleep(5) 
+        video_tasks[task_id]["progress"] = int((i / total_scenes) * 100)
+        video_tasks[task_id]["scene"] = i
+        # 这里未来会调用真实的渲染逻辑
+        print(f"Task {task_id}: Scene {i} done")
 
-def health_check():
+    video_tasks[task_id]["status"] = "complete"
+    video_tasks[task_id]["download_url"] = f"/api/video/download/{task_id}"
 
-    return {
+@app.post("/api/video/start")
+async def start_video(body: VideoRequest, background_tasks: BackgroundTasks):
+    """启动异步视频生成任务"""
+    task_id = str(uuid.uuid4())
+    background_tasks.add_task(run_video_pipeline_async, task_id, body.storyboard)
+    return {"task_id": task_id}
 
-        "status": "online",
+@app.get("/api/video/status/{task_id}")
+def get_status(task_id: str):
+    """查询任务进度"""
+    return video_tasks.get(task_id, {"status": "not_found"})
 
-        "message": "The back-end central control is operating normally!"
+@app.websocket("/ws/video/{task_id}")
+async def video_ws(websocket: WebSocket, task_id: str):
+    """WebSocket 实时推送进度"""
+    await websocket.accept()
+    try:
+        while True:
+            task = video_tasks.get(task_id)
+            if task:
+                await websocket.send_json(task)
+                if task["status"] == "complete":
+                    break
+            await asyncio.sleep(1) # 每秒推送一次
+    except WebSocketDisconnect:
+        print(f"Client disconnected from task {task_id}")
 
-    }
+# --- B5: 视频下载 ---
+@app.get("/api/video/download/{task_id}")
+def download_video(task_id: str):
+    # 这里应返回真实的 MP4 文件路径
+    # return FileResponse(path="path/to/video.mp4", filename=f"{task_id}.mp4")
+    return {"message": "Download link would be here."}
 
-
+# --- 基础页面路由 ---
 @app.get("/ui")
 def serve_frontend():
     return FileResponse(os.path.join(_CLIENT_DIR, "index.html"))
 
-
-@app.get("/ping")
-def ping():
-    return "pong - backend is alive!"
-
-
-@app.get("/ai-test")
-def ai_test():
-    result = AI_Engine.generate("Give me a one-sentence video idea about technology trends.")
-    return result
-
-
-
-# ============================================================
-
-# 📍 【前端对接区域 - FRONTEND API ZONE】
-
-# 这下面就是前端同学要调用的接口。
-
-# 前端调用的完整 URL 是：http://localhost:8000/api/test-flow
-
-# ============================================================
-
-
-
-@app.post("/api/test-flow")
-
-async def handle_test_flow(item: Interaction):
-
-    """
-
-    这个函数就是处理前端请求的“中枢”。
-
-    等前端同学 (@Liu/@Li) 的按钮画好了，他们的请求会打到这里。
-
-    """
-
-    # ------------------------------------------------------
-
-    # 1. 对接前端：这个函数的入口就是前端的“投递箱”
-
-    # 前端把数据发过来，item 就是前端塞进来的“纸条”
-
-    # ------------------------------------------------------
-
-    # 1. 后端终端打印日志（方便你看有没有接到请求）
-
-    print(f"🚀 收到前端点击请求: {item.user_input}")
-
-    # ------------------------------------------------------
-
-    # 2. 对接 AI 内核
-
-    # 下周 @Wu Ke 写好 AI 引擎后，你会在这里写一行类似：
-
-    # ai_result = WuKe_AI_Engine.generate(item.user_input)
-
-    # ------------------------------------------------------
-
-    # 2. 模拟处理逻辑
-
-    mock_ai_reply = f"【AI 回复】后端已收到指令：'{item.user_input}'。连接测试成功！"
-
-    
-
-    # 3. 返回给前端的数据（JSON 格式）
-
-    return {
-
-        "success": True,
-
-        "data": {
-
-            "reply": mock_ai_reply,
-
-            "received_at": datetime.datetime.now().strftime("%H:%M:%S")
-
-        }
-
-    }
-
-
-
-# ============================================================
-
-# 📍 【对接区域结束】
-
-# ============================================================
+@app.get("/")
+def health_check():
+    return {"status": "online", "time": datetime.datetime.now()}
