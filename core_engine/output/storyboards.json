@@ -1,0 +1,72 @@
+[
+  {
+    "trend": {
+      "platform": "github",
+      "title": "obra/superpowers",
+      "hot_value": "93,985 stars"
+    },
+    "storyboard": {
+      "scenes": [
+        {
+          "scene_id": 1,
+          "visual": "Camera pans over a sleek GitHub repository page for 'obra/superpowers'. The star counter animates from 0 to 93,985, with tiny golden stars bursting outward.",
+          "narration": "Welcome to obra/superpowers, the open-source project lighting up GitHub with over 93k stars.",
+          "style": "Minimalistic UI mockup with glossy, flat design elements; soft glow effects on stars; modern sans-serif typography."
+        },
+        {
+          "scene_id": 2,
+          "visual": "Split-screen montage of developers from different continents typing in VS Code, reviewing pull requests, and commenting on issues. Code snippets flow like neon particles.",
+          "narration": "Built by a global community of creators, each commit adds a new superpower to the toolkit.",
+          "style": "Dynamic motion graphics with vibrant cyber-punk palette; code flows as luminous trails; subtle depth-of-field blur."
+        },
+        {
+          "scene_id": 3,
+          "visual": "Showcase of real-world projects made with Superpowers: an indie pixel-art game, an interactive art installation, and a VR experience.",
+          "narration": "From indie games to immersive installations, superpowers turn ideas into reality.",
+          "style": "Semi-realistic cinematic render; soft lighting, slight film grain; screens have a slight glow to emphasize the projects."
+        },
+        {
+          "scene_id": 4,
+          "visual": "Close-up of the GitHub star button being clicked, then a fork button animation. Avatars raise their hands, forming a constellation that shapes the repository logo.",
+          "narration": "Join the movement — star, fork, and add your own superpower today.",
+          "style": "Uplifting, bright color scheme; animated button presses with particle bursts; final logo formed by stars."
+        }
+      ]
+    }
+  },
+  {
+    "trend": {
+      "platform": "github",
+      "title": "codecrafters-io/build-your-own-x",
+      "hot_value": "480,457 stars"
+    },
+    "storyboard": {
+      "scenes": [
+        {
+          "scene_id": 1,
+          "visual": "Screen capture of the GitHub repository showing the title, description, and the 480,457-star count. The camera slowly zooms in on the star badge with animated particles.",
+          "narration": "With over 480k stars, codecrafters-io's 'Build Your Own X' inspires developers worldwide to reinvent classic tools from scratch.",
+          "style": "Clean, modern UI overlay with bright accent colors, slight motion graphics, and a crisp high-resolution feel."
+        },
+        {
+          "scene_id": 2,
+          "visual": "Close-up of a developer's hands typing on a mechanical keyboard. The terminal shows a code editor with syntax-highlighted snippets setting up a basic Redis server.",
+          "narration": "Pick a project — Redis, Git, a database — and start with the basics, guided by hands-on challenges.",
+          "style": "Warm, cinematic lighting with shallow depth of field; code highlighted in vibrant syntax colors; slight film grain."
+        },
+        {
+          "scene_id": 3,
+          "visual": "Split-screen time-lapse: left side shows an empty project folder, right side shows it filling with source files, passing tests with green checkmarks, and a running demo.",
+          "narration": "Each step unlocks a new layer of understanding, turning theory into tangible skill.",
+          "style": "Dynamic, fast-cut editing with energetic rhythm; neon accents on progress indicators; vibrant color grading."
+        },
+        {
+          "scene_id": 4,
+          "visual": "Developer pushes the final commit; GitHub page updates in real time, the star count increments, and a badge appears: 'Your Own X'.",
+          "narration": "Join the community, build your own X, and watch your skills — and your stars — grow.",
+          "style": "Inspirational and uplifting tone with subtle lens flare, brand-consistent colors, and a smooth fade-out to the repo URL."
+        }
+      ]
+    }
+  }
+]
