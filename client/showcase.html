@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aiedio — 作品展示</title>
+    <title>Aiedio — Project Showcase</title>
     <style>
         :root {
             --bg: #0a0a14;
@@ -437,54 +437,54 @@
 <body>
 
 <div class="hero">
-    <h1>🎬 Aiedio 作品展示</h1>
-    <p class="tagline">AI 驱动 · 热点话题 → 全自动短视频生成</p>
+    <h1>🎬 Aiedio Showcase</h1>
+    <p class="tagline">AI-Powered · Trending Topics → Fully Automated Short Video Generation</p>
     <div class="stats">
-        <div class="stat"><div class="num" id="statVideos">-</div><div class="lbl">生成视频</div></div>
-        <div class="stat"><div class="num" id="statImages">-</div><div class="lbl">AI 首帧</div></div>
-        <div class="stat"><div class="num" id="statScenes">-</div><div class="lbl">分镜场景</div></div>
-        <div class="stat"><div class="num" id="statModels">3</div><div class="lbl">AI 模型</div></div>
+        <div class="stat"><div class="num" id="statVideos">-</div><div class="lbl">Videos Generated</div></div>
+        <div class="stat"><div class="num" id="statImages">-</div><div class="lbl">AI First Frames</div></div>
+        <div class="stat"><div class="num" id="statScenes">-</div><div class="lbl">Storyboard Scenes</div></div>
+        <div class="stat"><div class="num" id="statModels">3</div><div class="lbl">AI Models</div></div>
     </div>
 </div>
 
 <!-- Pipeline Overview -->
 <div class="container">
     <div class="pipeline-box">
-        <h2>🔄 Pipeline 生成流程</h2>
+        <h2>🔄 Generation Pipeline</h2>
         <div class="pipeline-steps">
             <div class="pipeline-step done">
                 <div class="ps-icon">🕷️</div>
-                <div class="ps-name">热点爬取</div>
-                <div class="ps-desc">知乎 + GitHub</div>
-                <div class="ps-status" style="color:var(--green)">✅ 已完成</div>
+                <div class="ps-name">Trend Crawling</div>
+                <div class="ps-desc">Zhihu + GitHub</div>
+                <div class="ps-status" style="color:var(--green)">✅ Complete</div>
             </div>
             <div class="pipeline-arrow">→</div>
             <div class="pipeline-step done">
                 <div class="ps-icon">📝</div>
-                <div class="ps-name">AI 分镜生成</div>
+                <div class="ps-name">AI Storyboard</div>
                 <div class="ps-desc">LLM → StoryboardJSON</div>
-                <div class="ps-status" style="color:var(--green)">✅ 已完成</div>
+                <div class="ps-status" style="color:var(--green)">✅ Complete</div>
             </div>
             <div class="pipeline-arrow">→</div>
             <div class="pipeline-step done">
                 <div class="ps-icon">🖼️</div>
-                <div class="ps-name">首帧生成</div>
+                <div class="ps-name">First Frame Gen</div>
                 <div class="ps-desc">Kling V3 CogView</div>
-                <div class="ps-status" style="color:var(--green)">✅ 已完成</div>
+                <div class="ps-status" style="color:var(--green)">✅ Complete</div>
             </div>
             <div class="pipeline-arrow">→</div>
             <div class="pipeline-step done">
                 <div class="ps-icon">🎥</div>
-                <div class="ps-name">视频生成</div>
+                <div class="ps-name">Video Generation</div>
                 <div class="ps-desc">Kling V3 / wan2.7</div>
-                <div class="ps-status" style="color:var(--green)">✅ 已完成</div>
+                <div class="ps-status" style="color:var(--green)">✅ Complete</div>
             </div>
             <div class="pipeline-arrow">→</div>
             <div class="pipeline-step wip">
                 <div class="ps-icon">✂️</div>
-                <div class="ps-name">后期合成</div>
-                <div class="ps-desc">字幕 + BGM + 导出</div>
-                <div class="ps-status" style="color:var(--yellow)">⚡ 进行中</div>
+                <div class="ps-name">Post-Production</div>
+                <div class="ps-desc">Subtitles + BGM + Export</div>
+                <div class="ps-status" style="color:var(--yellow)">⚡ In Progress</div>
             </div>
         </div>
     </div>
@@ -492,15 +492,15 @@
     <div id="projectsContainer">
         <div class="loading">
             <div class="spinner"></div>
-            <p style="margin-top: 16px;">加载作品数据...</p>
+            <p style="margin-top: 16px;">Loading project data...</p>
         </div>
     </div>
 </div>
 
 <div class="footer">
     <p style="margin-bottom: 8px;">
-        <a href="/ui">🎬 打开主应用</a> &nbsp;·&nbsp;
-        <a href="/docs">📚 API 文档</a>
+        <a href="/ui">🎬 Open Main App</a> &nbsp;·&nbsp;
+        <a href="/docs">📚 API Docs</a>
     </p>
     <p>Aiedio © 2026 — Team: @keeker765 · @LuYi · @HuYuxuan · @LiuShuaizhen · @LiXinying</p>
 </div>
@@ -554,7 +554,7 @@ async function loadShowcase() {
                             <source src="${proj.final_video}" type="video/mp4">
                         </video>
                         <div class="video-info">
-                            <span class="vi-label">🎬 最终成片</span>
+                            <span class="vi-label">🎬 Final Video</span>
                             <span class="vi-size">${proj.final_size_mb} MB</span>
                         </div>
                     </div>
@@ -563,7 +563,7 @@ async function loadShowcase() {
 
             // Clips
             if (proj.clips && proj.clips.length > 0) {
-                html += `<div class="clips-label">📎 分场景片段 (${proj.clips.length} 个)</div>`;
+                html += `<div class="clips-label">📎 Scene Clips (${proj.clips.length})</div>`;
                 html += `<div class="clips-row">`;
                 proj.clips.forEach((clip, ci) => {
                     html += `
@@ -584,7 +584,7 @@ async function loadShowcase() {
 
             // Images
             if (proj.images && proj.images.length > 0) {
-                html += `<div class="clips-label">🖼️ AI 生成首帧 (${proj.images.length} 张)</div>`;
+                html += `<div class="clips-label">🖼️ AI Generated First Frames (${proj.images.length})</div>`;
                 html += `<div class="images-row">`;
                 proj.images.forEach(img => {
                     html += `
@@ -600,7 +600,7 @@ async function loadShowcase() {
             // Storyboard
             if (proj.storyboard && proj.storyboard.scenes) {
                 html += `<div class="storyboard-section">`;
-                html += `<h3>📋 分镜脚本 — ${proj.storyboard.title || '未命名'}</h3>`;
+                html += `<h3>📋 Storyboard — ${proj.storyboard.title || 'Untitled'}</h3>`;
                 html += `<div class="scene-cards">`;
                 proj.storyboard.scenes.forEach(scene => {
                     html += `
@@ -622,11 +622,11 @@ async function loadShowcase() {
         });
 
         if (projects.length === 0) {
-            container.innerHTML = '<div class="loading"><p>暂无生成作品</p></div>';
+            container.innerHTML = '<div class="loading"><p>No generated works available</p></div>';
         }
 
     } catch (err) {
-        container.innerHTML = `<div class="loading"><p style="color:var(--accent2)">加载失败: ${err.message}</p></div>`;
+        container.innerHTML = `<div class="loading"><p style="color:var(--accent2)">Failed to load: ${err.message}</p></div>`;
     }
 }
 

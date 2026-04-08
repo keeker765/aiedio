@@ -227,9 +227,9 @@ def list_showcase_videos():
     projects_meta = [
         {
             "id": "backrooms_kling",
-            "title": "🏚️ 后室恐怖故事 — Kling V3",
-            "desc": "使用可灵 V3 模型生成的后室主题恐怖短片，含首帧图像 → I2V 动态化流程",
-            "model": "Kling V3 (可灵)",
+            "title": "🏚️ Backrooms Horror — Kling V3",
+            "desc": "Horror short film generated with Kling V3 model. Pipeline: AI first-frame → I2V animation.",
+            "model": "Kling V3",
             "video_dir": "videos/backrooms_kling",
             "asset_dir": "assets",
             "storyboard": "storyboards/storyboard_1775561440.json",
@@ -239,8 +239,8 @@ def list_showcase_videos():
         },
         {
             "id": "backrooms_continuity",
-            "title": "🔗 后室连续性版本 — wan2.7 I2V",
-            "desc": "4 幕场景连续性实验：前一场景结尾帧 → 下一场景首帧，保证画面衔接",
+            "title": "🔗 Backrooms Continuity — wan2.7 I2V",
+            "desc": "4-scene continuity experiment: last frame of scene N → first frame of scene N+1, ensuring visual coherence.",
             "model": "wan2.7 (DashScope I2V)",
             "video_dir": "videos/backrooms_continuity",
             "asset_dir": "assets/backrooms_continuity",
@@ -251,8 +251,8 @@ def list_showcase_videos():
         },
         {
             "id": "backrooms_v2",
-            "title": "🎬 后室 V2 终版 — 混合合成",
-            "desc": "4 幕场景 + BGM 混音 + 后期合成，MoviePy 多轨拼接",
+            "title": "🎬 Backrooms V2 Final — Mixed Composition",
+            "desc": "4 scenes + BGM mixing + post-production. MoviePy multi-track concatenation.",
             "model": "wan2.7 + MoviePy",
             "video_dir": "videos/backrooms_final_v2",
             "asset_dir": None,
@@ -263,8 +263,8 @@ def list_showcase_videos():
         },
         {
             "id": "backrooms_v3",
-            "title": "✨ 后室 V3 最终版",
-            "desc": "最终交付版本，全流程自动化生成",
+            "title": "✨ Backrooms V3 — Final Delivery",
+            "desc": "Final delivery version. Fully automated end-to-end pipeline generation.",
             "model": "Pipeline V3",
             "video_dir": "videos/backrooms_v3",
             "asset_dir": None,
