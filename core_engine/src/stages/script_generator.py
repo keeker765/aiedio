@@ -6,68 +6,19 @@ from __future__ import annotations
 
 import json
 import os
-import sys
-
-import requests as req
 
 from core_engine.src.pipeline.base import BaseStage, PipelineContext
 from core_engine.src.schemas.models import (
     AudioMode,
     CameraMotion,
-    Duration,
     SceneSchema,
     StoryboardSchema,
     TransitionType,
     VideoStyle,
 )
+from core_engine.src.utils.llm_client import call_llm
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
-_OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY", "")
-_ZHIPU_KEY = os.getenv("ZHIPU_API_KEY", "")
-_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
-_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-
-
-def _call_llm(prompt: str, lang: str = "en") -> str:
-    """Call LLM via OpenRouter (free) or ZhipuAI fallback."""
-    if _OPENROUTER_KEY:
-        system_msg = (
-            "You are an AI video creative director. "
-            f"Respond in {'Chinese' if lang == 'zh' else 'English'}. "
-            "Return ONLY valid JSON, no markdown fences."
-        )
-        resp = req.post(
-            _API_URL,
-            headers={
-                "Authorization": f"Bearer {_OPENROUTER_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": _MODEL,
-                "messages": [
-                    {"role": "system", "content": system_msg},
-                    {"role": "user", "content": prompt},
-                ],
-            },
-            timeout=90,
-        )
-        resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
-
-    if _ZHIPU_KEY:
-        import zhipuai
-        client = zhipuai.ZhipuAI(api_key=_ZHIPU_KEY)
-        response = client.chat.completions.create(
-            model="glm-4-flash",
-            messages=[
-                {"role": "system", "content": "You are an AI video creative director. Return ONLY valid JSON."},
-                {"role": "user", "content": prompt},
-            ],
-        )
-        return response.choices[0].message.content
-
-    return '[{"scene_id":1,"duration":10,"visual_prompt":"Placeholder scene","narration":"API key not configured","style":"cinematic"}]'
 
 
 def _build_wan_prompt(trend: dict, lang: str = "en") -> str:
@@ -124,7 +75,7 @@ class ScriptGenerator(BaseStage):
 
         print(f"  Topic: {trend.get('title', 'Unknown')}")
         prompt = _build_wan_prompt(trend, self.lang)
-        raw = _call_llm(prompt, self.lang)
+        raw = call_llm(prompt, lang=self.lang, json_mode=True)
 
         scenes = self._parse_scenes(raw)
 
@@ -140,8 +91,7 @@ class ScriptGenerator(BaseStage):
     def _fetch_trending(self) -> dict:
         """Try to import crawler and fetch first trend."""
         try:
-            sys.path.insert(0, os.path.join(_ROOT, "crawler", "src"))
-            from github_spider import fetch_github_hot
+            from crawler.src.github_spider import fetch_github_hot
             trends = fetch_github_hot()
             if trends:
                 return trends[0]
