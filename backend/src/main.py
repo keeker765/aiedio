@@ -218,6 +218,121 @@ def serve_showcase():
         return FileResponse(showcase)
     return {"message": "Showcase page not found"}
 
+@app.get("/api/showcase/videos")
+def list_showcase_videos():
+    """列出所有已生成的视频、图片和分镜数据供展示页使用"""
+    output_dir = os.path.join(_PROJECT_ROOT, "core_engine", "output")
+    result = {"projects": []}
+
+    projects_meta = [
+        {
+            "id": "backrooms_kling",
+            "title": "🏚️ 后室恐怖故事 — Kling V3",
+            "desc": "使用可灵 V3 模型生成的后室主题恐怖短片，含首帧图像 → I2V 动态化流程",
+            "model": "Kling V3 (可灵)",
+            "video_dir": "videos/backrooms_kling",
+            "asset_dir": "assets",
+            "storyboard": "storyboards/storyboard_1775561440.json",
+            "final": "backrooms_act1_act2_preview.mp4",
+            "clips": ["kling_v3_video_1775474758.mp4", "kling_v3_video_1775474988.mp4"],
+            "images": ["kling_v3_1775466427.png"],
+        },
+        {
+            "id": "backrooms_continuity",
+            "title": "🔗 后室连续性版本 — wan2.7 I2V",
+            "desc": "4 幕场景连续性实验：前一场景结尾帧 → 下一场景首帧，保证画面衔接",
+            "model": "wan2.7 (DashScope I2V)",
+            "video_dir": "videos/backrooms_continuity",
+            "asset_dir": "assets/backrooms_continuity",
+            "storyboard": "storyboards/storyboard_1775561440.json",
+            "final": "backrooms_continuity_final.mp4",
+            "clips": ["dashscope_i2v_1775467158.mp4", "dashscope_i2v_1775469275.mp4", "dashscope_i2v_1775470681.mp4", "scene2_recovered.mp4"],
+            "images": ["kling_v3_1775466556.png", "kling_v3_1775467196.png", "kling_v3_1775468703.png", "kling_v3_1775469350.png"],
+        },
+        {
+            "id": "backrooms_v2",
+            "title": "🎬 后室 V2 终版 — 混合合成",
+            "desc": "4 幕场景 + BGM 混音 + 后期合成，MoviePy 多轨拼接",
+            "model": "wan2.7 + MoviePy",
+            "video_dir": "videos/backrooms_final_v2",
+            "asset_dir": None,
+            "storyboard": "storyboards/storyboard_1775561440.json",
+            "final": "backrooms_v2_final.mp4",
+            "clips": ["mixed_scene1.mp4", "mixed_scene2.mp4", "mixed_scene3.mp4", "mixed_scene4.mp4"],
+            "images": [],
+        },
+        {
+            "id": "backrooms_v3",
+            "title": "✨ 后室 V3 最终版",
+            "desc": "最终交付版本，全流程自动化生成",
+            "model": "Pipeline V3",
+            "video_dir": "videos/backrooms_v3",
+            "asset_dir": None,
+            "storyboard": "storyboards/storyboard_1775561440.json",
+            "final": "backrooms_v3_final.mp4",
+            "clips": [],
+            "images": [],
+        },
+    ]
+
+    for pm in projects_meta:
+        proj = {"id": pm["id"], "title": pm["title"], "desc": pm["desc"], "model": pm["model"]}
+
+        # Final video
+        fpath = os.path.join(output_dir, pm["video_dir"], pm["final"])
+        if os.path.exists(fpath):
+            proj["final_video"] = f"/api/showcase/file/{pm['video_dir']}/{pm['final']}"
+            proj["final_size_mb"] = round(os.path.getsize(fpath) / 1024 / 1024, 1)
+        else:
+            proj["final_video"] = None
+
+        # Clips
+        proj["clips"] = []
+        for c in pm.get("clips", []):
+            cp = os.path.join(output_dir, pm["video_dir"], c)
+            if os.path.exists(cp):
+                proj["clips"].append({
+                    "name": c,
+                    "url": f"/api/showcase/file/{pm['video_dir']}/{c}",
+                    "size_mb": round(os.path.getsize(cp) / 1024 / 1024, 1),
+                })
+
+        # Images
+        proj["images"] = []
+        if pm.get("asset_dir"):
+            for img in pm.get("images", []):
+                ip = os.path.join(output_dir, pm["asset_dir"], img)
+                if os.path.exists(ip):
+                    proj["images"].append({
+                        "name": img,
+                        "url": f"/api/showcase/file/{pm['asset_dir']}/{img}",
+                    })
+
+        # Storyboard
+        sp = os.path.join(output_dir, pm.get("storyboard", ""))
+        if os.path.exists(sp):
+            try:
+                with open(sp, "r", encoding="utf-8") as f:
+                    proj["storyboard"] = json.load(f)
+            except Exception:
+                proj["storyboard"] = None
+        else:
+            proj["storyboard"] = None
+
+        result["projects"].append(proj)
+
+    return result
+
+@app.get("/api/showcase/file/{path:path}")
+def serve_showcase_file(path: str):
+    """服务 core_engine/output/ 下的静态文件"""
+    full = os.path.join(_PROJECT_ROOT, "core_engine", "output", path)
+    if not os.path.exists(full):
+        return {"error": "not found"}
+    ext = os.path.splitext(full)[1].lower()
+    mime = {"mp4": "video/mp4", "png": "image/png", "jpg": "image/jpeg", "webp": "image/webp"}.get(ext.lstrip("."), "application/octet-stream")
+    return FileResponse(full, media_type=mime)
+
 @app.get("/ui")
 def serve_frontend():
     """Serve the new product UI (index_new.html)"""
