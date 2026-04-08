@@ -210,6 +210,14 @@ def download_video(task_id: str):
     return {"message": "Video not ready yet"}
 
 # --- 基础页面路由 ---
+@app.get("/showcase")
+def serve_showcase():
+    """MVP 项目进展展示页面"""
+    showcase = os.path.join(_CLIENT_DIR, "showcase.html")
+    if os.path.exists(showcase):
+        return FileResponse(showcase)
+    return {"message": "Showcase page not found"}
+
 @app.get("/ui")
 def serve_frontend():
     """Serve the new product UI (index_new.html)"""

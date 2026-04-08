@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aiedio — MVP 项目进展展示</title>
+    <style>
+        :root {
+            --bg: #0f0f1a;
+            --surface: #1a1a2e;
+            --surface2: #222240;
+            --accent: #6c63ff;
+            --accent2: #ff6584;
+            --green: #00e676;
+            --yellow: #ffca28;
+            --orange: #ff9800;
+            --text: #e0e0e0;
+            --text-dim: #9e9e9e;
+            --border: #333355;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Segoe UI', 'Noto Sans SC', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Hero */
+        .hero {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            padding: 60px 40px 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(108,99,255,0.08) 0%, transparent 60%);
+            animation: pulse 8s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%,100% { transform: scale(1); opacity:0.5; }
+            50% { transform: scale(1.1); opacity:1; }
+        }
+        .hero h1 {
+            font-size: 2.8em;
+            font-weight: 800;
+            background: linear-gradient(90deg, #6c63ff, #ff6584);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            margin-bottom: 8px;
+        }
+        .hero .subtitle {
+            font-size: 1.1em;
+            color: var(--text-dim);
+            position: relative;
+        }
+
+        /* Overall progress */
+        .progress-section {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            padding: 30px 40px;
+            flex-wrap: wrap;
+        }
+        .progress-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 30px 40px;
+            text-align: center;
+            min-width: 200px;
+            position: relative;
+        }
+        .progress-card .ring {
+            width: 120px; height: 120px;
+            margin: 0 auto 16px;
+            position: relative;
+        }
+        .progress-card .ring svg { transform: rotate(-90deg); }
+        .progress-card .ring .value {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.8em;
+            font-weight: 700;
+        }
+        .progress-card .label {
+            font-size: 0.95em;
+            color: var(--text-dim);
+        }
+
+        /* Section */
+        .section {
+            max-width: 1100px;
+            margin: 20px auto;
+            padding: 0 30px;
+        }
+        .section h2 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section h2 .icon { font-size: 1.2em; }
+
+        /* User Story Cards */
+        .us-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+        .us-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 100px 1fr 130px;
+            align-items: center;
+            gap: 20px;
+            transition: border-color 0.3s;
+        }
+        .us-card:hover { border-color: var(--accent); }
+        .us-card .us-id {
+            font-size: 1.5em;
+            font-weight: 800;
+            color: var(--accent);
+        }
+        .us-card .us-name {
+            font-size: 1.05em;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .us-card .us-desc {
+            font-size: 0.88em;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+        .us-card .us-status {
+            text-align: right;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.82em;
+            font-weight: 600;
+        }
+        .badge.done {
+            background: rgba(0,230,118,0.15);
+            color: var(--green);
+            border: 1px solid rgba(0,230,118,0.3);
+        }
+        .badge.partial {
+            background: rgba(255,202,40,0.15);
+            color: var(--yellow);
+            border: 1px solid rgba(255,202,40,0.3);
+        }
+        .badge.wip {
+            background: rgba(255,152,0,0.15);
+            color: var(--orange);
+            border: 1px solid rgba(255,152,0,0.3);
+        }
+        .badge.todo {
+            background: rgba(158,158,158,0.15);
+            color: var(--text-dim);
+            border: 1px solid rgba(158,158,158,0.3);
+        }
+
+        /* Progress bar */
+        .mini-progress {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .mini-progress .bar {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 1s ease;
+        }
+        .mini-progress .bar.green { background: var(--green); }
+        .mini-progress .bar.yellow { background: var(--yellow); }
+        .mini-progress .bar.orange { background: var(--orange); }
+
+        /* Module overview */
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+        }
+        .module-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .module-card .mod-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .module-card .mod-name {
+            font-weight: 700;
+            font-size: 1.1em;
+        }
+        .module-card .mod-owner {
+            font-size: 0.8em;
+            color: var(--text-dim);
+            background: var(--surface2);
+            padding: 2px 10px;
+            border-radius: 10px;
+        }
+        .module-card ul {
+            list-style: none;
+            padding: 0;
+        }
+        .module-card li {
+            padding: 4px 0;
+            font-size: 0.88em;
+            color: var(--text-dim);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .module-card li .check { color: var(--green); }
+        .module-card li .warn { color: var(--yellow); }
+        .module-card li .cross { color: var(--accent2); }
+
+        /* Commit log */
+        .commit-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .commit-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .commit-item .sha {
+            font-family: 'Consolas', 'Fira Code', monospace;
+            font-size: 0.85em;
+            color: var(--accent);
+            background: var(--surface2);
+            padding: 3px 10px;
+            border-radius: 6px;
+            min-width: 80px;
+            text-align: center;
+        }
+        .commit-item .msg {
+            font-size: 0.9em;
+            flex: 1;
+        }
+
+        /* Architecture diagram (text) */
+        .arch-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            font-family: 'Consolas', 'Fira Code', monospace;
+            font-size: 0.85em;
+            line-height: 1.6;
+            white-space: pre;
+            overflow-x: auto;
+            color: var(--text-dim);
+        }
+        .arch-box .hl { color: var(--accent); font-weight: 700; }
+        .arch-box .hl2 { color: var(--green); }
+
+        /* Live test */
+        .live-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+        }
+        .test-btn {
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            border: none;
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 0.95em;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .test-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(108,99,255,0.4);
+        }
+        .test-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .test-results {
+            margin-top: 16px;
+            font-size: 0.9em;
+        }
+        .test-item {
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .test-item:last-child { border-bottom: none; }
+        .test-item .ep { font-family: monospace; color: var(--accent); min-width: 220px; }
+        .spinner {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-dim);
+            font-size: 0.85em;
+        }
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .us-card { grid-template-columns: 1fr; }
+            .progress-section { gap: 20px; }
+            .hero h1 { font-size: 2em; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="hero">
+    <h1>🎬 Aiedio MVP</h1>
+    <p class="subtitle">AI 驱动的热点短视频全自动生成流水线 — 项目进展展示</p>
+</div>
+
+<div class="progress-section">
+    <div class="progress-card">
+        <div class="ring">
+            <svg viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="10"/>
+                <circle cx="60" cy="60" r="50" fill="none" stroke="url(#grad1)" stroke-width="10"
+                    stroke-dasharray="314" stroke-dashoffset="47" stroke-linecap="round"/>
+                <defs><linearGradient id="grad1"><stop offset="0%" stop-color="#6c63ff"/><stop offset="100%" stop-color="#00e676"/></linearGradient></defs>
+            </svg>
+            <div class="value">85%</div>
+        </div>
+        <div class="label">总体完成度</div>
+    </div>
+    <div class="progress-card">
+        <div class="ring">
+            <svg viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="10"/>
+                <circle cx="60" cy="60" r="50" fill="none" stroke="var(--green)" stroke-width="10"
+                    stroke-dasharray="314" stroke-dashoffset="0" stroke-linecap="round"/>
+            </svg>
+            <div class="value">5/6</div>
+        </div>
+        <div class="label">User Story 完成</div>
+    </div>
+    <div class="progress-card">
+        <div class="ring">
+            <svg viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="10"/>
+                <circle cx="60" cy="60" r="50" fill="none" stroke="var(--accent)" stroke-width="10"
+                    stroke-dasharray="314" stroke-dashoffset="78.5" stroke-linecap="round"/>
+            </svg>
+            <div class="value">4</div>
+        </div>
+        <div class="label">模块已集成</div>
+    </div>
+</div>
+
+<!-- User Story Progress -->
+<div class="section">
+    <h2><span class="icon">📋</span> User Story 完成状态</h2>
+    <div class="us-grid">
+        <div class="us-card">
+            <div class="us-id">US-1</div>
+            <div>
+                <div class="us-name">Narrative Flow — 故事板生成</div>
+                <div class="us-desc">从一句话 Prompt 自动生成 4 场景结构化分镜脚本（JSON）。LLM 多步推理链：主题 → 大纲 → 场景 → 分镜。</div>
+                <div class="mini-progress"><div class="bar green" style="width:100%"></div></div>
+            </div>
+            <div class="us-status"><span class="badge done">✅ 已完成</span></div>
+        </div>
+
+        <div class="us-card">
+            <div class="us-id">US-4.1</div>
+            <div>
+                <div class="us-name">自动数据获取 — 爬虫</div>
+                <div class="us-desc">自动抓取知乎热搜 + GitHub Trending，输出 hot_trends.json。双平台 fallback 机制，Playwright + BeautifulSoup。</div>
+                <div class="mini-progress"><div class="bar green" style="width:100%"></div></div>
+            </div>
+            <div class="us-status"><span class="badge done">✅ 已完成</span></div>
+        </div>
+
+        <div class="us-card">
+            <div class="us-id">US-4.2</div>
+            <div>
+                <div class="us-name">剧本文案转写 — AI 脚本生成</div>
+                <div class="us-desc">热点话题 → ScriptGenerator → StoryboardSchema JSON。统一 LLM 客户端（OpenRouter / ZhipuAI 双路 fallback）。</div>
+                <div class="mini-progress"><div class="bar green" style="width:100%"></div></div>
+            </div>
+            <div class="us-status"><span class="badge done">✅ 已完成</span></div>
+        </div>
+
+        <div class="us-card">
+            <div class="us-id">US-4.3</div>
+            <div>
+                <div class="us-name">AI 视频片段生成 — Video Gen API</div>
+                <div class="us-desc">Pipeline 已实现 Kling V3 / wan2.7 / fal.ai 多 Provider 选择。Demo 模式使用预生成的后室 Kling V3 视频片段。</div>
+                <div class="mini-progress"><div class="bar yellow" style="width:80%"></div></div>
+            </div>
+            <div class="us-status"><span class="badge partial">⚠️ Demo 模式</span></div>
+        </div>
+
+        <div class="us-card">
+            <div class="us-id">US-4.4</div>
+            <div>
+                <div class="us-name">字幕与特效合成 — Compositing</div>
+                <div class="us-desc">Pipeline Stage 3 & 4 框架已搭建，VideoComposer + PostProcessor 类已定义。MoviePy 合成逻辑待实现。</div>
+                <div class="mini-progress"><div class="bar orange" style="width:40%"></div></div>
+            </div>
+            <div class="us-status"><span class="badge wip">🔧 进行中</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Module Status -->
+<div class="section">
+    <h2><span class="icon">📦</span> 模块集成状态</h2>
+    <div class="module-grid">
+        <div class="module-card">
+            <div class="mod-header">
+                <span class="mod-name">🔧 Core Engine</span>
+                <span class="mod-owner">@keeker765</span>
+            </div>
+            <ul>
+                <li><span class="check">✓</span> Pipeline 四阶段框架</li>
+                <li><span class="check">✓</span> ScriptGenerator (Stage 1)</li>
+                <li><span class="check">✓</span> 统一 LLM 客户端</li>
+                <li><span class="check">✓</span> Kling V3 视频生成 Provider</li>
+                <li><span class="check">✓</span> run_pipeline() 公共 API</li>
+                <li><span class="warn">⚡</span> VideoComposer (进行中)</li>
+                <li><span class="warn">⚡</span> PostProcessor (进行中)</li>
+            </ul>
+        </div>
+        <div class="module-card">
+            <div class="mod-header">
+                <span class="mod-name">🌐 Backend</span>
+                <span class="mod-owner">@LuYi</span>
+            </div>
+            <ul>
+                <li><span class="check">✓</span> B1: GET /api/trends</li>
+                <li><span class="check">✓</span> B2: POST /api/knowledge</li>
+                <li><span class="check">✓</span> B3: POST /api/storyboard</li>
+                <li><span class="check">✓</span> B4: POST /api/video/start</li>
+                <li><span class="check">✓</span> B5: GET /api/video/download</li>
+                <li><span class="check">✓</span> WebSocket 实时进度推送</li>
+                <li><span class="check">✓</span> 静态文件服务</li>
+            </ul>
+        </div>
+        <div class="module-card">
+            <div class="mod-header">
+                <span class="mod-name">🎨 Client</span>
+                <span class="mod-owner">@LiuShuaizhen</span>
+            </div>
+            <ul>
+                <li><span class="check">✓</span> F2: 话题选择页面</li>
+                <li><span class="check">✓</span> F3: 分镜预览页面</li>
+                <li><span class="check">✓</span> F4: 视频进度页面</li>
+                <li><span class="check">✓</span> WebSocket 客户端</li>
+                <li><span class="check">✓</span> visual_prompt 字段兼容</li>
+                <li><span class="check">✓</span> 响应式 UI 设计</li>
+            </ul>
+        </div>
+        <div class="module-card">
+            <div class="mod-header">
+                <span class="mod-name">🕷️ Crawler</span>
+                <span class="mod-owner">@HuYuxuan</span>
+            </div>
+            <ul>
+                <li><span class="check">✓</span> 知乎热搜爬虫</li>
+                <li><span class="check">✓</span> GitHub Trending 爬虫</li>
+                <li><span class="check">✓</span> 双平台 fallback</li>
+                <li><span class="check">✓</span> hot_trends.json 输出</li>
+                <li><span class="warn">⚡</span> topic_search (Stub)</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Architecture -->
+<div class="section">
+    <h2><span class="icon">🏗️</span> 系统架构</h2>
+    <div class="arch-box"><span class="hl">Client</span> (HTML/JS/CSS)
+  │  HTTP REST (port 8000)
+  ▼
+<span class="hl">Backend</span> (FastAPI + Uvicorn)
+  │  B1-B5 API + WebSocket
+  │  Direct Python import
+  ▼
+<span class="hl">Core Engine</span> (Pipeline Framework)
+  ├── Stage 1: <span class="hl2">ScriptGenerator</span> → LLM → StoryboardSchema
+  ├── Stage 2: <span class="hl2">AssetGenerator</span>  → CogView / Kling V3
+  ├── Stage 3: <span class="hl2">VideoComposer</span>  → MoviePy 合成
+  └── Stage 4: <span class="hl2">PostProcessor</span>  → 字幕/特效/导出
+  │
+  │  Shared LLM Client (OpenRouter ↔ ZhipuAI fallback)
+  ▼
+<span class="hl">Crawler</span> (BeautifulSoup + Playwright)
+  ├── zhihu_spider  → 知乎热搜 Top 5
+  └── github_spider → GitHub Trending Top 5
+  → hot_trends.json</div>
+</div>
+
+<!-- Key Commits -->
+<div class="section">
+    <h2><span class="icon">📝</span> 关键提交记录</h2>
+    <div class="commit-list">
+        <div class="commit-item">
+            <span class="sha">b2f6b71</span>
+            <span class="msg">feat(backend): wire B4/B5 to serve real Kling V3 Backrooms demo videos</span>
+        </div>
+        <div class="commit-item">
+            <span class="sha">47cfbe1</span>
+            <span class="msg">refactor(core_engine): extract shared LLM client, remove sys.path hacks</span>
+        </div>
+        <div class="commit-item">
+            <span class="sha">dd11aaa</span>
+            <span class="msg">chore: code cleanup — remove dead files, fix security, trim deps</span>
+        </div>
+        <div class="commit-item">
+            <span class="sha">9125e47</span>
+            <span class="msg">feat: integrate frontend + backend + core_engine (all endpoints 200)</span>
+        </div>
+    </div>
+</div>
+
+<!-- Live API Test -->
+<div class="section">
+    <h2><span class="icon">🧪</span> 实时 API 健康检测</h2>
+    <div class="live-section">
+        <button class="test-btn" onclick="runTests()">▶ 运行检测</button>
+        <div class="test-results" id="testResults"></div>
+    </div>
+</div>
+
+<div class="footer">
+    <p>Aiedio © 2026 — <a href="/ui">打开主应用 →</a></p>
+    <p style="margin-top: 6px;">Team: @keeker765 · @LuYi · @HuYuxuan · @LiuShuaizhen · @LiXinying</p>
+</div>
+
+<script>
+const BASE = window.location.origin;
+
+const endpoints = [
+    { method: 'GET',  url: '/api/trends',         name: 'B1 热点列表' },
+    { method: 'POST', url: '/api/knowledge',       name: 'B2 话题知识', body: { topic: 'AI' } },
+    { method: 'POST', url: '/api/storyboard',      name: 'B3 分镜生成', body: { topic: 'AI test', knowledge: [] } },
+    { method: 'POST', url: '/api/video/start',     name: 'B4 视频启动', body: { storyboard: { scenes: [{scene_id:1}] } } },
+    { method: 'GET',  url: '/ui',                  name: '前端页面' },
+];
+
+async function runTests() {
+    const btn = document.querySelector('.test-btn');
+    const container = document.getElementById('testResults');
+    btn.disabled = true;
+    btn.textContent = '⏳ 检测中...';
+    container.innerHTML = '';
+
+    for (const ep of endpoints) {
+        const row = document.createElement('div');
+        row.className = 'test-item';
+        row.innerHTML = `<span class="ep">${ep.method} ${ep.url}</span><span class="spinner"></span><span>${ep.name}</span>`;
+        container.appendChild(row);
+
+        try {
+            const opts = { method: ep.method };
+            if (ep.body) {
+                opts.headers = { 'Content-Type': 'application/json' };
+                opts.body = JSON.stringify(ep.body);
+            }
+            const t0 = performance.now();
+            const res = await fetch(BASE + ep.url, opts);
+            const ms = Math.round(performance.now() - t0);
+            const ok = res.status >= 200 && res.status < 400;
+            row.innerHTML = `<span class="ep">${ep.method} ${ep.url}</span>
+                <span style="color:${ok?'var(--green)':'var(--accent2)'}">${ok?'✅':'❌'} ${res.status}</span>
+                <span>${ep.name}</span>
+                <span style="color:var(--text-dim);margin-left:auto">${ms}ms</span>`;
+        } catch(e) {
+            row.innerHTML = `<span class="ep">${ep.method} ${ep.url}</span>
+                <span style="color:var(--accent2)">❌ Error</span>
+                <span>${ep.name} — ${e.message}</span>`;
+        }
+    }
+
+    // Test video download if start succeeded
+    try {
+        const startRes = await fetch(BASE + '/api/video/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ storyboard: { scenes: [{scene_id:1}] } })
+        });
+        const { task_id } = await startRes.json();
+        if (task_id) {
+            const dlRow = document.createElement('div');
+            dlRow.className = 'test-item';
+            dlRow.innerHTML = `<span class="ep">GET /api/video/download</span><span class="spinner"></span><span>B5 视频下载 (等待生成...)</span>`;
+            container.appendChild(dlRow);
+
+            // Wait for completion
+            for (let i = 0; i < 30; i++) {
+                await new Promise(r => setTimeout(r, 1000));
+                const st = await (await fetch(BASE + '/api/video/status/' + task_id)).json();
+                if (st.status === 'complete') break;
+            }
+            const dlRes = await fetch(BASE + '/api/video/download/' + task_id);
+            const ct = dlRes.headers.get('content-type') || '';
+            const size = dlRes.headers.get('content-length') || '?';
+            const isVideo = ct.includes('video');
+            dlRow.innerHTML = `<span class="ep">GET /api/video/download</span>
+                <span style="color:${isVideo?'var(--green)':'var(--yellow)'}">
+                    ${isVideo?'✅ video/mp4':'⚠️ '+ct}
+                </span>
+                <span>B5 视频下载 — ${isVideo?((parseInt(size)||0)/1024/1024).toFixed(1)+'MB MP4':'待就绪'}</span>`;
+        }
+    } catch(e) { /* ignore */ }
+
+    btn.disabled = false;
+    btn.textContent = '▶ 重新检测';
+}
+</script>
+
+</body>
+</html>
