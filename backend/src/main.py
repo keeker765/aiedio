@@ -106,11 +106,24 @@ def generate_storyboard(body: StoryboardRequest):
     return result.get("storyboard", {})
 
 # --- B4: 视频生成（异步逻辑） ---
+
+# Demo video files from previously generated Kling V3 Backrooms content
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_DEMO_VIDEOS = {
+    "scene_clips": [
+        os.path.join(_PROJECT_ROOT, "core_engine", "output", "videos", "backrooms_kling", "kling_v3_video_1775474758.mp4"),
+        os.path.join(_PROJECT_ROOT, "core_engine", "output", "videos", "backrooms_kling", "kling_v3_video_1775474988.mp4"),
+    ],
+    "final": os.path.join(_PROJECT_ROOT, "core_engine", "output", "videos", "backrooms_kling", "backrooms_act1_act2_preview.mp4"),
+}
+
 async def run_video_pipeline_async(task_id: str, storyboard: dict):
-    """异步 Pipeline 运行并更新状态（事件格式与前端 WebSocket 对齐）"""
-    total_scenes = len(storyboard.get("scenes", []))
-    if total_scenes == 0:
-        total_scenes = 1
+    """异步 Pipeline 运行并更新状态（事件格式与前端 WebSocket 对齐）
+
+    当前使用 demo 模式：播放已生成的后室 Kling V3 视频。
+    """
+    demo_clips = [p for p in _DEMO_VIDEOS["scene_clips"] if os.path.exists(p)]
+    total_scenes = len(demo_clips) if demo_clips else len(storyboard.get("scenes", [])) or 1
 
     video_tasks[task_id] = {
         "status": "processing",
@@ -121,21 +134,24 @@ async def run_video_pipeline_async(task_id: str, storyboard: dict):
     }
 
     for i in range(1, total_scenes + 1):
-        # 推送 scene_start 事件
         video_tasks[task_id]["events"].append(
             {"event": "scene_start", "scene": i, "total": total_scenes}
         )
         video_tasks[task_id]["scene"] = i
 
-        # TODO: 替换为真实的视频生成调用
-        await asyncio.sleep(5)
+        await asyncio.sleep(3)
 
+        preview_url = f"/api/video/clip/{task_id}/{i}" if i <= len(demo_clips) else ""
         video_tasks[task_id]["progress"] = int((i / total_scenes) * 100)
         video_tasks[task_id]["events"].append(
-            {"event": "scene_done", "scene": i, "total": total_scenes, "preview_url": ""}
+            {"event": "scene_done", "scene": i, "total": total_scenes, "preview_url": preview_url}
         )
         print(f"Task {task_id}: Scene {i}/{total_scenes} done")
 
+    # Store demo video path for download
+    final_path = _DEMO_VIDEOS["final"]
+    video_tasks[task_id]["final_path"] = final_path if os.path.exists(final_path) else None
+    video_tasks[task_id]["demo_clips"] = demo_clips
     video_tasks[task_id]["status"] = "complete"
     video_tasks[task_id]["events"].append(
         {"event": "complete", "video_url": f"/api/video/download/{task_id}"}
@@ -173,12 +189,25 @@ async def video_ws(websocket: WebSocket, task_id: str):
     except WebSocketDisconnect:
         print(f"Client disconnected from task {task_id}")
 
-# --- B5: 视频下载 ---
+# --- B5: 视频下载 & 片段预览 ---
+@app.get("/api/video/clip/{task_id}/{scene_idx}")
+def serve_clip(task_id: str, scene_idx: int):
+    """返回单幕视频片段预览"""
+    task = video_tasks.get(task_id)
+    if task and "demo_clips" in task:
+        clips = task["demo_clips"]
+        idx = scene_idx - 1
+        if 0 <= idx < len(clips) and os.path.exists(clips[idx]):
+            return FileResponse(clips[idx], media_type="video/mp4")
+    return {"message": "Clip not available"}
+
 @app.get("/api/video/download/{task_id}")
 def download_video(task_id: str):
-    # 这里应返回真实的 MP4 文件路径
-    # return FileResponse(path="path/to/video.mp4", filename=f"{task_id}.mp4")
-    return {"message": "Download link would be here."}
+    """下载最终合成视频"""
+    task = video_tasks.get(task_id)
+    if task and task.get("final_path") and os.path.exists(task["final_path"]):
+        return FileResponse(task["final_path"], media_type="video/mp4", filename=f"aiedio_{task_id[:8]}.mp4")
+    return {"message": "Video not ready yet"}
 
 # --- 基础页面路由 ---
 @app.get("/ui")
