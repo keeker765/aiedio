@@ -50,6 +50,75 @@ def _select_video_provider(output_dir: str) -> KlingVideoProvider | FalWanProvid
     return PlaceholderVideoProvider(output_dir=output_dir)
 
 
+def run_pipeline(
+    topic: str,
+    knowledge: list | None = None,
+    *,
+    project_id: str | None = None,
+    lang: str = "zh",
+    storyboard_only: bool = False,
+    on_scene_done: callable | None = None,
+) -> dict:
+    """Public API for backend to call the pipeline.
+
+    Args:
+        topic: Video topic string.
+        knowledge: Optional list of knowledge dicts from crawler.
+        project_id: Optional project ID (auto-generated if None).
+        lang: Output language ("en" or "zh").
+        storyboard_only: If True, only run ScriptGenerator (for B3).
+        on_scene_done: Optional callback(scene_idx, total, clip_path) for progress.
+
+    Returns:
+        dict with keys: success, project_id, storyboard, final_path, error
+    """
+    if not project_id:
+        project_id = f"vid_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+
+    project_dir = os.path.join(_ROOT, "core_engine", "output")
+
+    runner = PipelineRunner()
+
+    # Stage 1: Script — inject knowledge into metadata
+    runner.add_stage(ScriptGenerator(topic=topic, lang=lang))
+
+    if not storyboard_only:
+        # Stage 2: Assets
+        assets_dir = os.path.join(project_dir, "assets", project_id)
+        runner.add_stage(AssetGenerator(
+            image_provider=ZhipuImageProvider(output_dir=assets_dir),
+            tts_provider=EdgeTTSProvider(output_dir=assets_dir),
+            music_provider=LocalMusicProvider(),
+        ))
+
+        # Stage 3: Video
+        video_dir = os.path.join(project_dir, "videos", project_id)
+        video_provider = _select_video_provider(video_dir)
+        runner.add_stage(VideoComposer(video_provider=video_provider))
+
+        # Stage 4: Post-processing
+        runner.add_stage(PostProcessor())
+
+    ctx = PipelineContext(project_id=project_id, project_dir=project_dir)
+    if knowledge:
+        ctx.metadata["knowledge"] = knowledge
+
+    result = runner.run(ctx)
+
+    # Convert to plain dict for JSON serialization
+    storyboard_dict = None
+    if result.storyboard:
+        storyboard_dict = result.storyboard.model_dump()
+
+    return {
+        "success": result.success,
+        "project_id": result.project_id,
+        "storyboard": storyboard_dict,
+        "final_path": str(result.final_path) if result.final_path else None,
+        "error": result.error,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="Aiedio Video Generation Pipeline")
     parser.add_argument("--topic", type=str, default=None, help="Custom topic (skips trending fetch)")

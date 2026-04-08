@@ -196,8 +196,8 @@ function renderStoryboard(storyboard) {
     storyboardGrid.innerHTML = scenes.map((scene, idx) => `
         <div class="scene-card" data-scene-index="${idx}">
             <div class="scene-number">Scene ${idx + 1} / ${scenes.length}</div>
-            <div class="scene-description" id="sceneDesc_${idx}">${escapeHtml(scene.description || scene.prompt || 'No description')}</div>
-            <textarea class="scene-edit" data-scene="${idx}" rows="3">${escapeHtml(scene.description || scene.prompt || '')}</textarea>
+            <div class="scene-description" id="sceneDesc_${idx}">${escapeHtml(scene.description || scene.visual_prompt || scene.prompt || 'No description')}</div>
+            <textarea class="scene-edit" data-scene="${idx}" rows="3">${escapeHtml(scene.description || scene.visual_prompt || scene.prompt || '')}</textarea>
         </div>
     `).join('');
     
