@@ -14,7 +14,7 @@ import os
 import pathlib
 import time
 
-os.environ.setdefault("DASHSCOPE_API_KEY", "sk-a502b56390664a90aa0daa32df5c068a")
+os.environ.setdefault("DASHSCOPE_API_KEY", os.getenv("DASHSCOPE_API_KEY", ""))
 
 print("=" * 65)
 print("  THE BACKROOMS — Scene Continuity Pipeline")

@@ -2,7 +2,7 @@
 import os
 import pathlib
 
-os.environ.setdefault("DASHSCOPE_API_KEY", "sk-a502b56390664a90aa0daa32df5c068a")
+os.environ.setdefault("DASHSCOPE_API_KEY", os.getenv("DASHSCOPE_API_KEY", ""))
 
 from core_engine.src.pipeline.scene_continuity import extract_last_frame, generate_transition_frame
 from core_engine.src.providers.image.kling_v3 import KlingImageProvider

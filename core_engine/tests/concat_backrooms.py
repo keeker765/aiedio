@@ -1,7 +1,7 @@
 """Concatenate all 4 Backrooms clips into final video."""
 import os, pathlib
 
-os.environ.setdefault("DASHSCOPE_API_KEY", "sk-a502b56390664a90aa0daa32df5c068a")
+os.environ.setdefault("DASHSCOPE_API_KEY", os.getenv("DASHSCOPE_API_KEY", ""))
 
 clips_dir = pathlib.Path("core_engine/output/videos/backrooms_story")
 clip_order = [

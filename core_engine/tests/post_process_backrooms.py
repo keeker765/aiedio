@@ -15,7 +15,7 @@ import time
 import imageio_ffmpeg
 
 FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
-os.environ.setdefault("DASHSCOPE_API_KEY", "sk-a502b56390664a90aa0daa32df5c068a")
+os.environ.setdefault("DASHSCOPE_API_KEY", os.getenv("DASHSCOPE_API_KEY", ""))
 
 CLIPS_DIR = pathlib.Path("core_engine/output/videos/backrooms_story")
 OUT_DIR = pathlib.Path("core_engine/output/videos/backrooms_final_v2")
