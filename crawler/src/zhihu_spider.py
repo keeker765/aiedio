@@ -10,16 +10,25 @@ BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_PATH = BASE_DIR / "hot_trends.json"
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0"
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/123.0.0.0 Safari/537.36"
+    ),
+    "Referer": "https://www.zhihu.com/",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
 }
 
 
 def _fallback_items() -> list[dict]:
     return [
-        {"platform": "zhihu", "title": f"知乎热点 {i}", "hot_value": "N/A"}
-        for i in range(1, 6)
+        {"platform": "zhihu", "title": "知乎热点 1", "hot_value": "N/A"},
+        {"platform": "zhihu", "title": "知乎热点 2", "hot_value": "N/A"},
+        {"platform": "zhihu", "title": "知乎热点 3", "hot_value": "N/A"},
+        {"platform": "zhihu", "title": "知乎热点 4", "hot_value": "N/A"},
+        {"platform": "zhihu", "title": "知乎热点 5", "hot_value": "N/A"},
     ]
-
 
 def fetch_zhihu_hot() -> list[dict]:
     print("Zhihu spider running")
