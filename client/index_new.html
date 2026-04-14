@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aiedio - AI Video Generator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">🎬</span>
+                <span class="logo-text">Aiedio</span>
+            </div>
+            <div class="header-subtitle">AI Video Generation · Trend Driven</div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content" id="mainContent">
+            <!-- View 1: Topic Selection (F2) -->
+            <div id="topicSelectView" class="view active">
+                <div class="hero-section">
+                    <h1>Generate Your AI Video</h1>
+                    <p>Pick a trending topic, or enter your own</p>
+                </div>
+
+                <div class="custom-topic-section">
+                    <input type="text" id="customTopicInput" class="custom-topic-input" placeholder="Enter a topic, e.g., Backrooms horror story, Cyberpunk romance...">
+                    <button id="submitCustomTopicBtn" class="btn btn-primary btn-large">✨ Generate Video</button>
+                </div>
+
+                <div class="divider">
+                    <span>Or choose from today's trends</span>
+                </div>
+
+                <div id="trendsLoading" class="loading-spinner hidden">
+                    <div class="spinner"></div>
+                    <span>Loading trends...</span>
+                </div>
+
+                <div id="trendsGrid" class="trends-grid"></div>
+
+                <div id="errorMessage" class="error-message hidden"></div>
+            </div>
+
+            <!-- View 2: Story Background + Storyboard Preview (F3) -->
+            <div id="storyboardView" class="view hidden">
+                <button id="backToTopicBtn" class="btn btn-back">← Back to Topics</button>
+                
+                <div class="story-background-section">
+                    <h2>📖 Story Background</h2>
+                    <div id="storyBackground" class="story-background-card"></div>
+                    <div id="knowledgeSources" class="knowledge-sources"></div>
+                </div>
+
+                <div class="storyboard-section">
+                    <h2>🎬 Storyboard</h2>
+                    <div id="storyboardGrid" class="storyboard-grid"></div>
+                    <div class="storyboard-actions">
+                        <button id="regenerateStoryboardBtn" class="btn btn-secondary">🔄 Regenerate Storyboard</button>
+                        <button id="generateVideoBtn" class="btn btn-primary">🎥 Generate Video</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View 3: Video Generation Progress (F4) -->
+            <div id="videoProgressView" class="view hidden">
+                <button id="backToStoryboardBtn" class="btn btn-back">← Back to Storyboard</button>
+                
+                <div class="progress-section">
+                    <h2>🎬 Generating Video</h2>
+                    <div class="progress-bar-container">
+                        <div id="progressBar" class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <div id="progressText" class="progress-text">Preparing...</div>
+                </div>
+
+                <div id="scenePreviews" class="scene-previews"></div>
+
+                <div id="finalVideoSection" class="final-video-section hidden">
+                    <h2>✅ Video Generation Complete!</h2>
+                    <video id="finalVideo" class="final-video" controls>
+                        Your browser does not support video playback.
+                    </video>
+                    <a id="downloadLink" class="btn btn-primary" download>💾 Download Video</a>
+                    <button id="newVideoBtn" class="btn btn-secondary">✨ Create New Video</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

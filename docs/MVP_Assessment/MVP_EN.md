@@ -4,46 +4,76 @@
 
 ---
 
-## 1. MVP Scope Determination (5 pts)
+## 1. MVP Scope Determination
 
-**Selected 2 User Stories**:
+**Selected 2 core User Stories (US-4 decomposed into 4 Sub-Stories)**:
 
-| US   | Feature                                           | Rationale                |
-| ---- | ------------------------------------------------- | ------------------------ |
-| US-1 | Narrative Flow (Story board generation)           | Core AI auto-creativity  |
-| US-4 | One-Click Composition (Crawler+Video+Compositing) | Complete automation loop |
+| US       | Feature                                         | Rationale                                       |
+| -------- | ----------------------------------------------- | ----------------------------------------------- |
+| **US-1** | **Narrative Flow (Storyboard generation)**      | **Core AI-driven creativity**                   |
+| **US-4** | **One-Click Composition (Auto video pipeline)** | **Complete automation loop**                    |
+| ↳ US-4.1 | Auto Data Acquisition (Crawler)                 | Scrapes trending topics as creative input       |
+| ↳ US-4.2 | Script Copywriting (Story Generation)           | Distills trend data into video text structure   |
+| ↳ US-4.3 | AI Video Clip Generation (Video Gen API)        | Calls model to produce visual footage           |
+| ↳ US-4.4 | Subtitle & Effects Compositing                  | Aligns audio/video timeline, delivers final MP4 |
 
 **Excluded Rationale**: US-2 (Character continuity - future) / US-3 (Brand control - future) / US-5 (Latency optimization)
 
 ---
 
-## 2. User Story Complexity (3 pts)
+## 2. User Story Complexity
 
 ### US-1: Narrative Flow — 🔴 High
 
-- **Sequential dependency**: 4-step LLM chain (Topic → Outline → Scenes → Shots), each step's output feeds the next — no parallelism
-- **Quality control difficult**: Creative output is subjective, hard to validate automatically, requires iterative Prompt tuning
-- **Strict format constraint**: Output must be structured JSON for downstream video generation
-- **Video prompt alignment**: Generated scene descriptions must be precise enough to produce coherent video clips via Video Gen API — vague or inconsistent prompts lead to unusable output
+- **Sequential dependency**: 4-step LLM chain (Topic → Outline → Scenes → Shots)
+  - Each step's output feeds the next — no parallelism
+- **Quality control difficult**: Creative output is subjective
+  - Hard to validate automatically, requires iterative Prompt tuning
+- **Strict format constraint**: Output must be structured JSON
+  - For downstream video generation
+- **Video prompt alignment**: Scene descriptions must be precise enough
+  - To produce coherent video clips via Video Gen API
+  - Vague or inconsistent prompts lead to unusable output
 
-### US-4: One-Click Composition — 🟡 Medium
+### US-4: One-Click Composition (4 Sub-Stories) — 🟡 Medium (overall)
 
-- **Decoupled modules**: 5 sub-modules (Crawler / Story Generation / Video API / Subtitles / Compositing) with clear interfaces, can be developed in parallel
-- **Mature toolchain**: Relies on MoviePy/FFmpeg and Video Gen API with sufficient documentation
-- **Complexity in orchestration layer**, not algorithm design
+Modules are decoupled with clear interfaces and can be developed in parallel; complexity is in the orchestration layer.
+
+#### US-4.1 Auto Data Acquisition — 🟢 Low
+
+- Crawler logic is deterministic with well-defined interfaces
+- No complex algorithms involved
+
+#### US-4.2 Script Copywriting — 🟡 Medium
+
+- Relies on LLM for stable information extraction
+- Requires structured output to connect upstream and downstream
+
+#### US-4.3 AI Video Clip Generation — 🔴 High
+
+- Must handle network latency and Video Gen API rate limits
+- Requires async request state management and retry logic
+
+#### US-4.4 Subtitle & Effects Compositing — 🟡 Medium
+
+- Relies on mature toolchain (MoviePy / FFmpeg)
+- Requires precise multi-track timeline synchronization
 
 ---
 
-## 3. User Story Importance (2 pts)
+## 3. User Story Importance
 
-| US   | Impact     |
-| ---- | ---------- |
-| US-1 | ⭐⭐⭐⭐⭐ |
-| US-4 | ⭐⭐⭐⭐⭐ |
+| US                                    | Impact     |
+| ------------------------------------- | ---------- |
+| US-1                                  | ⭐⭐⭐⭐⭐ |
+| US-4.1 Auto Data Acquisition          | ⭐⭐⭐⭐   |
+| US-4.2 Script Copywriting             | ⭐⭐⭐⭐⭐ |
+| US-4.3 AI Video Clip Generation       | ⭐⭐⭐⭐⭐ |
+| US-4.4 Subtitle & Effects Compositing | ⭐⭐⭐⭐   |
 
 ---
 
-## 4. MVP Completeness (2 pts)
+## 4. MVP Completeness
 
 Users can obtain a publish-ready short video through a complete automation loop: **Trend discovery (Crawler) → AI creativity (Storyboard) → Video generation → Automatic compositing**.
 
@@ -51,18 +81,21 @@ Users can obtain a publish-ready short video through a complete automation loop:
 
 ---
 
-## 5. MVP Minimalism (2 pts)
+## 5. MVP Minimalism
 
-| US   | Can Delete?                                         |
-| ---- | --------------------------------------------------- |
-| US-1 | ❌ No creativity = No AI value                      |
-| US-4 | ❌ No crawler and compositing = No product delivery |
+| US | Can Delete? |
+| --- | --- |
+| US-1 | ❌ No creativity = No AI value |
+| US-4.1 Auto Data Acquisition | ❌ No data source = No content input |
+| US-4.2 Script Copywriting | ❌ No script = Cannot drive video generation |
+| US-4.3 AI Video Clip Generation | ❌ No video = No product core |
+| US-4.4 Subtitle & Effects Compositing | ❌ No compositing = No deliverable output |
 
-**Answer**: ✅ Minimal (Both 2 USs are essential)
+**Answer**: ✅ Minimal (US-1 and every US-4 sub-story are all essential)
 
 ---
 
-## 6. MVP Realism (2 pts)
+## 6. MVP Realism
 
 **Can 5-person team complete it?**
 
@@ -75,10 +108,11 @@ Users can obtain a publish-ready short video through a complete automation loop:
 
 **Workload Distribution**:
 
-- Wu Ke (Core Engine): US-1 = 50 hours
-- Lu Yi (Backend): Data flow, queues, storage = 25 hours
-- Hu Yuxuan (Crawler): US-4 crawler part = 15 hours
-- Liu/Li (Frontend): UI interface = 10 hours
+- Wu Ke (Core Engine): US-1 story generation = 25 hours
+- Lu Yi (Backend): Data flow, queues, API routes = 20 hours
+- Hu Yuxuan (Crawler): US-4 crawler + data pipeline = 20 hours
+- Liu Shuaizhen (Frontend Interaction): State management, API integration, business logic = 20 hours
+- Li Xinying (Frontend UI/UX): Component styling, responsive layout, motion effects = 15 hours
 
 **Total**: ~100 hours / 800 available = Reasonable workload
 

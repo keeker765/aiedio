@@ -1,50 +1,23 @@
 """
 Story Prompt Generator — Generate AI video storyboard prompts from GitHub trends.
-Usage: python core_engine/src/story_prompt.py [--lang zh]
+Usage: python -m core_engine.src.story_prompt [--lang zh]
 """
-import sys
 import os
 import argparse
-import requests as req
 
-# Add crawler/src to search path for github_spider import
+from core_engine.src.utils.llm_client import call_llm
+
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, os.path.join(_ROOT, "crawler", "src"))
-
-from github_spider import fetch_github_hot
-
-_OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY", "")
-_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
-_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
-def call_llm(prompt: str, lang: str = "en") -> str:
-    """Call free LLM via OpenRouter."""
-    if not _OPENROUTER_KEY:
-        return f"[Placeholder] API Key not configured. Received: '{prompt[:80]}...'"
-
-    system_msg = (
-        "You are an AI assistant that helps generate video scripts and creative content. "
-        f"Respond in {'Chinese' if lang == 'zh' else 'English'}."
-    )
-
-    resp = req.post(
-        _API_URL,
-        headers={
-            "Authorization": f"Bearer {_OPENROUTER_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": _MODEL,
-            "messages": [
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": prompt},
-            ],
-        },
-        timeout=60,
-    )
-    resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"]
+def _fetch_trends() -> list[dict]:
+    """Fetch GitHub trending data using proper package import."""
+    try:
+        from crawler.src.github_spider import fetch_github_hot
+        return fetch_github_hot()
+    except Exception as e:
+        print(f"  [WARN] Could not fetch trends: {e}")
+        return []
 
 
 def build_story_prompt(trend: dict, lang: str = "en") -> str:
@@ -69,7 +42,7 @@ def build_story_prompt(trend: dict, lang: str = "en") -> str:
 def generate_stories(lang: str = "en"):
     """Fetch GitHub trends -> build story prompts -> call AI engine."""
     print("=== Fetching GitHub Trends ===")
-    trends = fetch_github_hot()
+    trends = _fetch_trends()
 
     if not trends:
         print("No trend data retrieved.")
@@ -83,7 +56,7 @@ def generate_stories(lang: str = "en"):
         prompt = build_story_prompt(trend, lang)
         print(f"Prompt built, calling AI engine...\n")
 
-        story = call_llm(prompt, lang)
+        story = call_llm(prompt, lang=lang)
         print(story)
         print()
 

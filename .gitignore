@@ -31,3 +31,8 @@ Thumbs.db
 
 # Claude
 .claude/
+
+# Generated output — videos, images, audio (large binary files)
+core_engine/output/videos/
+core_engine/output/assets/
+core_engine/output/storyboards/

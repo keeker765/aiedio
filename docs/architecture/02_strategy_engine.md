@@ -26,7 +26,8 @@
 ## 2. 技术栈选型
 - **调度编排**：Python 3.10+
 - **LLM 框架**：LangChain / LlamaIndex (执行多步推理与提词组装)
-- **爬虫技术**：equests + BeautifulSoup4 (轻量) / Playwright (强反爬动态池)
+- **爬虫技术**：
+equests + BeautifulSoup4 (轻量) / Playwright (强反爬动态池)
 - **图像生成**：Midjourney API / Stable Diffusion (SDXL)
-- **联合视频生成**：Seedance 2.0 API (或相兼容的大模型接口)
+- **联合视频生成**：Video Gen API (或相兼容的大模型接口)
 - **渲染组合**：MoviePy / ffmpeg-python
