@@ -1,67 +1,122 @@
-"""Topic knowledge search — search Zhihu/GitHub for background knowledge on a topic.
-
-Stub implementation: returns mock data so backend can start.
-TODO(@HuYuxuan): Replace with real Zhihu search + GitHub API search.
-"""
 from __future__ import annotations
 
-import os
 import json
+import os
+from pathlib import Path
+from urllib.parse import quote
 
-_OUTPUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "topic_knowledge.json")
+import requests
+from bs4 import BeautifulSoup
+
+BASE_DIR = Path(__file__).resolve().parent
+OUTPUT_PATH = BASE_DIR / "topic_knowledge.json"
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0"
+}
 
 
-def search_topic_knowledge(topic: str, max_results: int = 5) -> dict:
-    """Search for topic-related knowledge from Zhihu and GitHub.
+def _truncate(text: str, limit: int = 200) -> str:
+    text = " ".join((text or "").split())
+    return text[:limit]
 
-    Args:
-        topic: The topic to search for.
-        max_results: Maximum number of results per platform.
 
-    Returns:
-        dict with keys: topic, sources (list of {platform, title, summary, url})
-    """
-    sources = []
+def _search_zhihu(topic: str, max_results: int = 5) -> list[dict]:
+    url = f"https://www.zhihu.com/search?q={quote(topic)}&type=content"
+    results: list[dict] = []
+    seen: set[str] = set()
 
-    # Try real search, fall back to stub
     try:
-        sources = _search_zhihu(topic, max_results) + _search_github(topic, max_results)
+        response = requests.get(url, headers=HEADERS, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            title = a.get_text(" ", strip=True)
+
+            if not title:
+                continue
+
+            if "zhihu.com/question" not in href and "zhihu.com/p/" not in href:
+                continue
+
+            if href.startswith("/"):
+                href = "https://www.zhihu.com" + href
+
+            if href in seen:
+                continue
+            seen.add(href)
+
+            summary = ""
+            if a.parent:
+                summary = _truncate(a.parent.get_text(" ", strip=True).replace(title, ""))
+
+            results.append({
+                "platform": "zhihu",
+                "title": _truncate(title, 100),
+                "summary": summary,
+                "url": href,
+            })
+
+            if len(results) >= max_results:
+                break
+
     except Exception as e:
-        print(f"  [WARN] Topic search failed, using stub: {e}")
+        print(f"Zhihu topic search failed: {e}")
 
-    if not sources:
-        sources = [
-            {
-                "platform": "stub",
-                "title": f"关于「{topic}」的背景知识",
-                "summary": f"这是一个关于「{topic}」的占位摘要。真实数据将由爬虫模块提供。",
-                "url": "",
-            }
-        ]
-
-    result = {"topic": topic, "sources": sources}
-
-    # Write to file for other modules
-    try:
-        with open(_OUTPUT_PATH, "w", encoding="utf-8") as f:
-            json.dump(result, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
-
-    return result
-
-
-def _search_zhihu(topic: str, max_results: int = 3) -> list[dict]:
-    """Search Zhihu for topic-related content.
-
-    TODO(@HuYuxuan): Implement real Zhihu search using requests/Playwright.
-    """
-    return []
+    return results
 
 
 def _search_github(topic: str, max_results: int = 3) -> list[dict]:
-    """Search GitHub for topic-related repositories.
+    url = "https://api.github.com/search/repositories"
+    headers = dict(HEADERS)
 
-    TODO(@HuYuxuan): Implement using GitHub search API.
-    """
-    return []
+    token = os.getenv("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    results: list[dict] = []
+
+    try:
+        response = requests.get(
+            url,
+            headers=headers,
+            params={
+                "q": topic,
+                "sort": "stars",
+                "order": "desc",
+                "per_page": max_results,
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        for item in data.get("items", [])[:max_results]:
+            results.append({
+                "platform": "github",
+                "title": item.get("full_name", ""),
+                "summary": _truncate(item.get("description") or ""),
+                "url": item.get("html_url", ""),
+            })
+
+    except Exception as e:
+        print(f"GitHub topic search failed: {e}")
+
+    return results
+
+
+def search_topic_knowledge(topic: str, max_results: int = 5) -> dict:
+    zhihu_sources = _search_zhihu(topic, max_results=max_results)
+    github_sources = _search_github(topic, max_results=3)
+
+    result = {
+        "topic": topic,
+        "sources": zhihu_sources + github_sources
+    }
+
+    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+
+    return result
