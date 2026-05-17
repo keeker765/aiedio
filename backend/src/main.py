@@ -105,8 +105,10 @@ class StoryboardRequest(BaseModel):
 
 class VideoRequest(BaseModel):
     storyboard: dict
-    video_provider: str = "openrouter"  # "openrouter" | "dashscope" | "fal" | "placeholder"
-    video_model: str = ""               # model override (e.g. "happyhorse-1.0-t2v" for openrouter)
+    # Default to Kling V3 (DashScope) — best quality, what 《纸手机》 used.
+    # Other options: "openrouter" (Kling V1), "dashscope" (Wan 2.7), "happyhorse", "fal", "placeholder".
+    video_provider: str = "kling_v3"
+    video_model: str = ""
 
 # 存储异步任务状态的全局字典
 video_tasks = {}
@@ -433,8 +435,35 @@ async def run_video_pipeline_async(task_id: str, storyboard: dict, video_provide
 
 @app.post("/api/video/start")
 async def start_video(body: VideoRequest, background_tasks: BackgroundTasks):
-    """启动异步视频生成任务"""
+    """启动异步视频生成任务。
+
+    Records the storyboard to disk immediately so it survives even if the
+    pipeline crashes before PostProcessor writes metadata.json. The showcase
+    API uses this file as a fallback when metadata.storyboard is missing.
+    """
     task_id = str(uuid.uuid4())
+
+    # Persist the storyboard up-front (project dir + cache)
+    try:
+        proj_dir = os.path.join(_PROJECT_ROOT, "core_engine", "output", "videos", task_id)
+        os.makedirs(proj_dir, exist_ok=True)
+        sb_path = os.path.join(proj_dir, "storyboard.json")
+        with open(sb_path, "w", encoding="utf-8") as f:
+            json.dump(body.storyboard, f, ensure_ascii=False, indent=2)
+        # Also log to global cache for cross-session lookup
+        cache_path = os.path.join(_CACHE_DIR, f"storyboard_video_{task_id}.json")
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "task_id": task_id,
+                "started_at": datetime.datetime.now().isoformat(),
+                "video_provider": body.video_provider,
+                "video_model": body.video_model,
+                "storyboard": body.storyboard,
+            }, f, ensure_ascii=False, indent=2)
+        log.info("Storyboard recorded: task=%s title=%r", task_id[:8], body.storyboard.get("title", "")[:60])
+    except Exception as e:
+        log.warning("Failed to record storyboard for task %s: %s", task_id[:8], e)
+
     background_tasks.add_task(run_video_pipeline_async, task_id, body.storyboard, body.video_provider, body.video_model)
     return {"task_id": task_id}
 
@@ -530,9 +559,10 @@ def list_cached_topics():
 def list_video_models():
     """返回可用的视频生成模型列表（供前端下拉选择）"""
     return {"models": [
-        {"id": "openrouter", "name": "Kling Video O1 (OpenRouter)", "provider": "openrouter"},
-        {"id": "dashscope",  "name": "Wan 2.7 T2V (阿里百炼)",     "provider": "dashscope"},
-        {"id": "happyhorse", "name": "Happyhorse T2V (阿里百炼)",  "provider": "happyhorse"},
+        {"id": "kling_v3",  "name": "Kling V3 (阿里百炼) — recommended", "provider": "kling_v3"},
+        {"id": "dashscope", "name": "Wan 2.7 T2V (阿里百炼)",          "provider": "dashscope"},
+        {"id": "happyhorse","name": "Happyhorse T2V (阿里百炼)",       "provider": "happyhorse"},
+        {"id": "openrouter","name": "Kling Video O1 (OpenRouter, V1)", "provider": "openrouter"},
     ]}
 
 # --- 基础页面路由 ---
@@ -579,7 +609,17 @@ def list_showcase_videos():
         proj["desc"] = f"{meta.get('scenes', '?')} scenes, {meta.get('total_duration', '?')}s total"
         proj["model"] = "DashScope I2V" if any("dashscope" in f.lower() for f in os.listdir(vdir)) else "Pipeline"
         # Surface the embedded storyboard so showcase.html can render scenes.
+        # Priority: metadata.storyboard (written by PostProcessor) > storyboard.json
+        # (written by /api/video/start before pipeline runs — survives crashes).
         sb = meta.get("storyboard")
+        if not (isinstance(sb, dict) and sb.get("scenes")):
+            sb_path = os.path.join(vdir, "storyboard.json")
+            if os.path.exists(sb_path):
+                try:
+                    with open(sb_path, "r", encoding="utf-8") as f:
+                        sb = json.load(f)
+                except Exception:
+                    sb = None
         if isinstance(sb, dict) and sb.get("scenes"):
             proj["storyboard"] = sb
 

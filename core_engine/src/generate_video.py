@@ -8,11 +8,14 @@ Usage (from project root):
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import time
 import uuid
 
 from core_engine.src.pipeline.base import PipelineContext
+
+log = logging.getLogger("aiedio")
 from core_engine.src.pipeline.runner import PipelineRunner
 
 # Stages
@@ -23,47 +26,50 @@ from core_engine.src.stages.post_processor import PostProcessor
 
 # Providers
 from core_engine.src.providers.video.fal_wan import FalWanProvider
-from core_engine.src.providers.video.dashscope_wan import DashScopeWanProvider
+from core_engine.src.providers.video.dashscope_video import DashScopeWanProvider, DashScopeHappyhorseProvider
 from core_engine.src.providers.video.kling_v3_video import KlingVideoProvider
 from core_engine.src.providers.video.placeholder import PlaceholderVideoProvider
+from core_engine.src.providers.video.openrouter_video import OpenRouterVideoProvider
 from core_engine.src.providers.tts.edge_tts_provider import EdgeTTSProvider
 from core_engine.src.providers.image.zhipu_cogview import ZhipuImageProvider
+from core_engine.src.providers.image.openrouter_image import OpenRouterImageProvider
 from core_engine.src.providers.music.local_library import LocalMusicProvider
+from core_engine.src.schemas.models import StoryboardSchema
 
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def _select_video_provider(output_dir: str) -> KlingVideoProvider | FalWanProvider | DashScopeWanProvider | PlaceholderVideoProvider:
-    """Auto-select video provider based on available API keys.
-
-    Priority: Kling V3 > wan2.7 (DashScope) > Wan2.6 (fal.ai) > Placeholder
-    Both Kling V3 and wan2.7 use the same DASHSCOPE_API_KEY.
-    """
-    if os.getenv("DASHSCOPE_API_KEY"):
-        print("  Video provider: Kling V3 via DashScope (kling/kling-v3-video-generation) ✅")
-        return KlingVideoProvider(output_dir=output_dir)
-    if os.getenv("FAL_KEY"):
-        print("  Video provider: Wan 2.6 via fal.ai ✅")
-        return FalWanProvider(output_dir=output_dir)
-    print("  Video provider: Placeholder (set DASHSCOPE_API_KEY or FAL_KEY)")
-    return PlaceholderVideoProvider(output_dir=output_dir)
+def _select_image_provider(output_dir: str) -> OpenRouterImageProvider | ZhipuImageProvider:
+    """Auto-select image provider. Priority: OpenRouter > ZhipuAI."""
+    if os.getenv("OPENROUTER_API_KEY"):
+        log.info("  Image provider: GPT-5.4 Image 2 via OpenRouter")
+        return OpenRouterImageProvider(output_dir=output_dir)
+    log.info("  Image provider: Zhipu CogView (set OPENROUTER_API_KEY for GPT-5.4 Image)")
+    return ZhipuImageProvider(output_dir=output_dir)
 
 
 def run_pipeline(
     topic: str,
     knowledge: list | None = None,
+    storyboard_dict: dict | None = None,
     *,
     project_id: str | None = None,
-    lang: str = "zh",
+    lang: str = "en",
     storyboard_only: bool = False,
     on_scene_done: callable | None = None,
+    video_provider: str = "openrouter",
+    image_provider: str = "openrouter",
+    analyses: list | None = None,
+    video_model: str = "",
+    scene_count: int = 0,
 ) -> dict:
     """Public API for backend to call the pipeline.
 
     Args:
         topic: Video topic string.
         knowledge: Optional list of knowledge dicts from crawler.
+        storyboard_dict: Optional pre-generated storyboard dict (skip ScriptGenerator).
         project_id: Optional project ID (auto-generated if None).
         lang: Output language ("en" or "zh").
         storyboard_only: If True, only run ScriptGenerator (for B3).
@@ -77,31 +83,56 @@ def run_pipeline(
 
     project_dir = os.path.join(_ROOT, "core_engine", "output")
 
+    ctx = PipelineContext(project_id=project_id, project_dir=project_dir)
+    if knowledge:
+        ctx.metadata["knowledge"] = knowledge
+    if analyses:
+        ctx.metadata["analyses"] = analyses
+    if on_scene_done:
+        ctx.metadata["on_scene_done"] = on_scene_done
+
+    # If a pre-built storyboard is provided, hydrate it and skip ScriptGenerator
+    if storyboard_dict:
+        ctx.storyboard = StoryboardSchema(**storyboard_dict)
+        log.info("  Using pre-generated storyboard: %s (%d scenes)", ctx.storyboard.title, len(ctx.storyboard.scenes))
+
     runner = PipelineRunner()
 
-    # Stage 1: Script — inject knowledge into metadata
-    runner.add_stage(ScriptGenerator(topic=topic, lang=lang))
+    # Stage 1: Script — skip if storyboard already provided
+    if not storyboard_dict:
+        runner.add_stage(ScriptGenerator(topic=topic, lang=lang, scene_count=scene_count))
 
     if not storyboard_only:
         # Stage 2: Assets
         assets_dir = os.path.join(project_dir, "assets", project_id)
+        img_prov = {
+            "openrouter": OpenRouterImageProvider,
+            "zhipu": ZhipuImageProvider,
+        }.get(image_provider, OpenRouterImageProvider)
         runner.add_stage(AssetGenerator(
-            image_provider=ZhipuImageProvider(output_dir=assets_dir),
+            image_provider=img_prov(output_dir=assets_dir) if img_prov else ZhipuImageProvider(output_dir=assets_dir),
             tts_provider=EdgeTTSProvider(output_dir=assets_dir),
             music_provider=LocalMusicProvider(),
         ))
 
         # Stage 3: Video
         video_dir = os.path.join(project_dir, "videos", project_id)
-        video_provider = _select_video_provider(video_dir)
-        runner.add_stage(VideoComposer(video_provider=video_provider))
+        vid_prov_cls = {
+            "kling_v3": KlingVideoProvider,
+            "openrouter": OpenRouterVideoProvider,
+            "dashscope": DashScopeWanProvider,
+            "happyhorse": DashScopeHappyhorseProvider,
+            "fal": FalWanProvider,
+            "placeholder": PlaceholderVideoProvider,
+        }.get(video_provider, KlingVideoProvider)  # default: Kling V3 (highest quality)
+        log.info("  Video provider: %s (%s) model=%s", vid_prov_cls.__name__, video_provider, video_model or 'default')
+        vid_kwargs = {"output_dir": video_dir}
+        if video_model:
+            vid_kwargs["model"] = video_model
+        runner.add_stage(VideoComposer(video_provider=vid_prov_cls(**vid_kwargs)))
 
         # Stage 4: Post-processing
         runner.add_stage(PostProcessor())
-
-    ctx = PipelineContext(project_id=project_id, project_dir=project_dir)
-    if knowledge:
-        ctx.metadata["knowledge"] = knowledge
 
     result = runner.run(ctx)
 
@@ -130,8 +161,7 @@ def main():
     project_id = f"vid_{int(time.time())}_{uuid.uuid4().hex[:6]}"
     project_dir = os.path.join(_ROOT, "core_engine", "output")
 
-    print(f"\n🎬 Aiedio Video Pipeline")
-    print(f"  Project ID: {project_id}")
+    log.info("Aiedio Video Pipeline — Project ID: %s", project_id)
 
     # Build pipeline
     runner = PipelineRunner()
@@ -144,15 +174,14 @@ def main():
         if not args.no_assets:
             assets_dir = os.path.join(project_dir, "assets", project_id)
             runner.add_stage(AssetGenerator(
-                image_provider=ZhipuImageProvider(output_dir=assets_dir),
+                image_provider=OpenRouterImageProvider(output_dir=assets_dir),
                 tts_provider=EdgeTTSProvider(output_dir=assets_dir),
                 music_provider=LocalMusicProvider(),
             ))
 
-        # Stage 3: Video
+        # Stage 3: Video (hardcoded to OpenRouter Kling Video O1)
         video_dir = os.path.join(project_dir, "videos", project_id)
-        video_provider = _select_video_provider(video_dir)
-        runner.add_stage(VideoComposer(video_provider=video_provider))
+        runner.add_stage(VideoComposer(video_provider=OpenRouterVideoProvider(output_dir=video_dir)))
 
         # Stage 4: Post-processing
         runner.add_stage(PostProcessor())
@@ -162,16 +191,15 @@ def main():
     result = runner.run(ctx)
 
     # Print summary
-    print(f"\n📋 Result Summary:")
-    print(f"  Success: {result.success}")
+    log.info("Result: success=%s", result.success)
     if result.storyboard:
-        print(f"  Title: {result.storyboard.title}")
-        print(f"  Scenes: {len(result.storyboard.scenes)}")
-        print(f"  Duration: {result.storyboard.total_duration}s")
+        log.info("  Title: %s", result.storyboard.title)
+        log.info("  Scenes: %d", len(result.storyboard.scenes))
+        log.info("  Duration: %ds", result.storyboard.total_duration)
     if result.final_path:
-        print(f"  Output: {result.final_path}")
+        log.info("  Output: %s", result.final_path)
     if result.error:
-        print(f"  Error: {result.error}")
+        log.error("  Error: %s", result.error)
 
     return result
 
