@@ -5,15 +5,19 @@ Uses MoviePy (already in requirements) for video editing operations.
 from __future__ import annotations
 
 import json
+import logging
 import os
+import subprocess
 from pathlib import Path
 from typing import Optional
 
 from core_engine.src.pipeline.base import BaseStage, PipelineContext
 
+log = logging.getLogger("aiedio")
+
 
 class PostProcessor(BaseStage):
-    """Stage 4: Concatenate video clips, add subtitles, export final video."""
+    """Stage 4: Concatenate video clips, burn subtitles, export final video."""
 
     name = "post_processor"
 
@@ -22,7 +26,7 @@ class PostProcessor(BaseStage):
         clip_paths = [Path(p) for p in clip_paths_raw if Path(p).exists() and Path(p).suffix == ".mp4"]
 
         if not clip_paths:
-            print("  No video clips to process")
+            log.info("  No video clips to process")
             self._save_metadata(ctx)
             return
 
@@ -30,31 +34,74 @@ class PostProcessor(BaseStage):
         output_dir = project_dir / "videos" / ctx.project_id
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        if len(clip_paths) == 1:
-            # Single clip — just apply post-processing
-            ctx.final_path = clip_paths[0]
-            print(f"  Single clip — output: {clip_paths[0].name}")
-        else:
-            # Multiple clips — concatenate with MoviePy
-            final_path = self._concatenate_clips(clip_paths, output_dir, ctx)
-            if final_path:
-                ctx.final_path = final_path
-
         # Generate SRT subtitle file from storyboard narrations
+        srt_path = None
         if ctx.storyboard:
             srt_path = self._generate_srt(ctx, output_dir)
             if srt_path:
                 ctx.metadata["srt_path"] = str(srt_path)
-                print(f"  Subtitles saved: {srt_path.name}")
+                log.info("  Subtitles saved: %s", srt_path.name)
+
+        if len(clip_paths) == 1:
+            # Single clip — burn subtitles if available
+            final_path = self._burn_subtitles(clip_paths[0], output_dir, ctx, srt_path)
+            ctx.final_path = final_path
+        else:
+            # Multiple clips — concatenate with MoviePy
+            concat_path = self._concatenate_clips(clip_paths, output_dir, ctx)
+            if concat_path:
+                final_path = self._burn_subtitles(concat_path, output_dir, ctx, srt_path)
+                ctx.final_path = final_path
+            else:
+                ctx.final_path = clip_paths[0]
 
         self._save_metadata(ctx)
+
+    def _burn_subtitles(
+        self, video_path: Path, output_dir: Path, ctx: PipelineContext, srt_path: Optional[Path]
+    ) -> Path:
+        """Burn SRT subtitles into video using ffmpeg. Returns final video path."""
+        if not srt_path or not srt_path.exists():
+            log.info("  No subtitles to burn — keeping raw video")
+            return video_path
+
+        final_path = output_dir / f"{ctx.project_id}_final.mp4"
+        if final_path.exists():
+            final_path.unlink()
+
+        try:
+            # Use ffmpeg to burn subtitles — escapes SRT path for Windows
+            srt_escaped = str(srt_path).replace("\\", "/").replace(":", "\\:")
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", str(video_path),
+                "-vf", f"subtitles='{srt_escaped}'",
+                "-c:a", "copy",
+                str(final_path),
+            ]
+            log.info("  Burning subtitles: %s → %s", video_path.name, final_path.name)
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=120, encoding="utf-8", errors="replace"
+            )
+            if result.returncode == 0 and final_path.exists():
+                log.info("  Subtitles burned successfully: %s", final_path.name)
+                return final_path
+            else:
+                log.warning("  ffmpeg subtitle burn failed (rc=%d): %s", result.returncode, result.stderr[:300])
+        except FileNotFoundError:
+            log.warning("  ffmpeg not found — skipping subtitle burn")
+        except subprocess.TimeoutExpired:
+            log.warning("  ffmpeg timed out — skipping subtitle burn")
+        except Exception as e:
+            log.warning("  Subtitle burn failed: %s", e)
+
+        return video_path
 
     def _concatenate_clips(
         self, clips: list[Path], output_dir: Path, ctx: PipelineContext
     ) -> Optional[Path]:
         """Concatenate multiple MP4 clips into one video."""
         try:
-            # moviepy 2.x changed import path
             try:
                 from moviepy import VideoFileClip, concatenate_videoclips
             except ImportError:
@@ -66,15 +113,15 @@ class PostProcessor(BaseStage):
                     vc = VideoFileClip(str(p))
                     video_clips.append(vc)
                 except Exception as e:
-                    print(f"  [WARN] Could not load clip {p.name}: {e}")
+                    log.warning("  Could not load clip %s: %s", p.name, e)
 
             if not video_clips:
                 return None
 
+            concat_path = output_dir / f"{ctx.project_id}_concat.mp4"
             final = concatenate_videoclips(video_clips, method="compose")
-            final_path = output_dir / f"{ctx.project_id}_final.mp4"
             final.write_videofile(
-                str(final_path),
+                str(concat_path),
                 fps=24,
                 codec="libx264",
                 audio_codec="aac",
@@ -84,14 +131,14 @@ class PostProcessor(BaseStage):
             for vc in video_clips:
                 vc.close()
 
-            print(f"  Concatenated {len(video_clips)} clips → {final_path.name}")
-            return final_path
+            log.info("  Concatenated %d clips → %s", len(video_clips), concat_path.name)
+            return concat_path
 
         except ImportError:
-            print("  [WARN] MoviePy not available — skipping concatenation")
+            log.warning("  MoviePy not available — skipping concatenation")
             return clips[0] if clips else None
         except Exception as e:
-            print(f"  [ERROR] Concatenation failed: {e}")
+            log.error("  Concatenation failed: %s", e)
             return clips[0] if clips else None
 
     def _generate_srt(self, ctx: PipelineContext, output_dir: Path) -> Optional[Path]:
@@ -148,7 +195,10 @@ class PostProcessor(BaseStage):
             "final_path": str(ctx.final_path) if ctx.final_path else None,
             "srt_path": ctx.metadata.get("srt_path"),
             "clip_paths": ctx.metadata.get("clip_paths", []),
+            # Embed the full storyboard so the showcase page can render scenes
+            # without needing a separate file or DB lookup.
+            "storyboard": ctx.storyboard.model_dump() if ctx.storyboard else None,
         }
         meta_path = output_dir / "metadata.json"
         meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
-        print(f"  Metadata saved: {meta_path.name}")
+        log.info("  Metadata saved: %s", meta_path.name)

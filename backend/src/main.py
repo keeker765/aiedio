@@ -578,6 +578,10 @@ def list_showcase_videos():
         proj["title"] = meta.get("title", dirname)
         proj["desc"] = f"{meta.get('scenes', '?')} scenes, {meta.get('total_duration', '?')}s total"
         proj["model"] = "DashScope I2V" if any("dashscope" in f.lower() for f in os.listdir(vdir)) else "Pipeline"
+        # Surface the embedded storyboard so showcase.html can render scenes.
+        sb = meta.get("storyboard")
+        if isinstance(sb, dict) and sb.get("scenes"):
+            proj["storyboard"] = sb
 
         # Find final video (*_final.mp4 or fallback to final_path from metadata)
         final_video = None
