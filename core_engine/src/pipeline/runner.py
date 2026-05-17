@@ -1,11 +1,14 @@
 """Pipeline runner — orchestrates stage execution."""
 from __future__ import annotations
 
+import logging
 import time
 from typing import Optional
 
 from core_engine.src.pipeline.base import BaseStage, PipelineContext
 from core_engine.src.schemas.models import PipelineResult
+
+log = logging.getLogger("aiedio")
 
 
 class PipelineRunner:
@@ -46,13 +49,16 @@ class PipelineRunner:
             except Exception as exc:
                 elapsed = time.time() - t0
                 ctx.save_checkpoint(stage.name, {"status": "error", "error": str(exc)})
+                # Use log.exception so the full traceback lands in server.log,
+                # not just stdout (where uvicorn's reload-watcher may swallow it).
+                log.exception("Stage '%s' failed (%.1fs)", stage.name, elapsed)
                 print(f"[{idx}/{total}] ❌ '{stage.name}' failed ({elapsed:.1f}s): {exc}\n")
                 return PipelineResult(
                     project_id=ctx.project_id,
                     success=False,
                     storyboard=ctx.storyboard,
                     assets=ctx.assets,
-                    error=f"Stage '{stage.name}' failed: {exc}",
+                    error=f"Stage '{stage.name}' failed: {type(exc).__name__}: {exc}",
                 )
 
         print(f"{'='*60}")

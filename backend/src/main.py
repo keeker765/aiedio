@@ -10,10 +10,50 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import datetime
+import hashlib
 import os
+import time
 import uuid
 import asyncio
 import json
+import logging
+
+# ---- DEBUG ----
+print(f"[AIEDIO DEBUG] main.py loaded from: {__file__}", flush=True)
+# ---- END DEBUG ----
+
+# --- Logging setup (dedicated file, bypass uvicorn's root logger) ---
+_log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "server.log").replace("\\", "/")
+_log_handler = logging.FileHandler(_log_path, mode="a", encoding="utf-8")
+_log_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+log = logging.getLogger("aiedio")
+log.setLevel(logging.INFO)
+log.addHandler(_log_handler)
+log.propagate = False  # don't send to uvicorn's root logger
+
+# --- Disk cache (persistent across restarts) ---
+_CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "cache")
+os.makedirs(_CACHE_DIR, exist_ok=True)
+
+def _cache_key(topic: str, prefix: str = "knowledge") -> str:
+    h = hashlib.md5(topic.encode("utf-8")).hexdigest()[:16]
+    return os.path.join(_CACHE_DIR, f"{prefix}_{h}.json")
+
+def _cache_get(key: str) -> dict | None:
+    if os.path.exists(key):
+        try:
+            with open(key, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return None
+
+def _cache_set(key: str, data: dict):
+    try:
+        with open(key, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        log.warning("Cache write failed: %s", e)
 
 # --- Defensive imports: degrade gracefully if modules not ready ---
 try:
@@ -23,16 +63,10 @@ except ImportError:
     print("[WARN] core_engine.run_pipeline not available")
 
 try:
-    from crawler.src.zhihu_spider import fetch_zhihu_hot
+    from crawler.src.crawler import fetch_all_trends
 except ImportError:
-    fetch_zhihu_hot = lambda: []
-    print("[WARN] crawler.zhihu_spider not available")
-
-try:
-    from crawler.src.github_spider import fetch_github_hot
-except ImportError:
-    fetch_github_hot = lambda: []
-    print("[WARN] crawler.github_spider not available")
+    fetch_all_trends = lambda: {"trends": [], "errors": []}
+    print("[WARN] crawler.fetch_all_trends not available")
 
 try:
     from crawler.src.topic_search import search_topic_knowledge
@@ -47,6 +81,8 @@ app = FastAPI(
     description="Backend hub responsible for connecting crawler, frontend, and AI engine.",
     version="1.1.0"
 )
+
+log.info("Aiedio backend started")
 
 # 允许跨域
 app.add_middleware(
@@ -67,34 +103,220 @@ class KnowledgeRequest(BaseModel):
 
 class StoryboardRequest(BaseModel):
     topic: str
-    knowledge: list
+    knowledge: list = []
+    analyses: list = []
+    refresh: bool = False
+    version: str = ""  # specific storyboard cache version to load
+    scene_count: int = 0  # 0=auto, 1-4=number of scenes to generate
 
 class VideoRequest(BaseModel):
     storyboard: dict
+    video_provider: str = "openrouter"  # "openrouter" | "dashscope" | "fal" | "placeholder"
+    video_model: str = ""               # model override (e.g. "happyhorse-1.0-t2v" for openrouter)
 
 # 存储异步任务状态的全局字典
 video_tasks = {}
 
-# --- B1: 热点 API ---
+# --- 简单缓存（避免每次刷新都等爬虫） ---
+_cache: dict[str, tuple[float, any]] = {}  # key -> (expiry, data)
+_CACHE_TTL = 300  # 5 分钟
+
+
+def _get_cached_or_refresh(key: str, func: callable, ttl: int = _CACHE_TTL):
+    """Return cached value or call func, cache result, return."""
+    now = time.time()
+    cached = _cache.get(key)
+    if cached and cached[0] > now:
+        return cached[1]
+    data = func()
+    _cache[key] = (now + ttl, data)
+    return data
+
+# --- YouTube 搜索 API ---
+@app.get("/api/youtube/search")
+def search_youtube(q: str = "", max_results: int = 8):
+    """搜索 YouTube 视频，返回可选列表"""
+    try:
+        from crawler.src.youtube_spider import fetch_youtube_memes
+        # Use search-based approach
+        import requests
+        api_key = os.getenv("YOUTUBE_API_KEY", "")
+        if not api_key or not q:
+            return {"results": []}
+        resp = requests.get(
+            "https://www.googleapis.com/youtube/v3/search",
+            params={"part": "snippet", "q": q, "type": "video", "maxResults": max_results, "key": api_key},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        results = []
+        for item in data.get("items", []):
+            vid = item.get("id", {}).get("videoId", "")
+            snippet = item.get("snippet", {})
+            results.append({
+                "platform": "youtube",
+                "title": snippet.get("title", "")[:120],
+                "summary": snippet.get("description", "")[:150],
+                "url": f"https://www.youtube.com/watch?v={vid}" if vid else "",
+                "hot_value": "",
+            })
+        return {"results": results}
+    except Exception as e:
+        return {"results": [], "error": str(e)}
+
+
+# --- YouTube 视频分析 API（异步） ---
+@app.get("/api/youtube/analyze")
+def analyze_youtube_video(url: str = ""):
+    """异步分析单个 YouTube 视频的字幕内容"""
+    if "watch?v=" not in url:
+        return {"error": "Invalid YouTube URL"}
+    try:
+        from crawler.src.video_analyzer import analyze_video
+        vid = url.split("watch?v=")[-1].split("&")[0]
+        if not vid:
+            return {"error": "Invalid video ID"}
+        analysis = analyze_video(vid)
+        return {"title": "", "url": url, "content": analysis or ""}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# --- B1: 热点 API（缓存 5 分钟） ---
 @app.get("/api/trends")
 def get_trends():
-    """获取知乎和GitHub热点列表"""
-    zhihu = fetch_zhihu_hot()
-    github = fetch_github_hot()
-    return zhihu + github
+    """获取各平台热点列表，含平台状态（缓存 5 分钟）"""
+    return _get_cached_or_refresh("trends", fetch_all_trends, ttl=300)
 
-# --- B2: 话题知识 API ---
+# --- Debug: check cache ---
+@app.get("/api/debug/cache")
+def debug_cache():
+    """Check cache state"""
+    return {
+        "__file__": __file__,
+        "_CACHE_DIR": _CACHE_DIR,
+        "cache_exists": os.path.isdir(_CACHE_DIR),
+        "cache_files": os.listdir(_CACHE_DIR) if os.path.isdir(_CACHE_DIR) else [],
+        "log_path": _log_path,
+        "log_exists": os.path.exists(_log_path),
+    }
+
+# --- B2: 话题知识 API（同步返回视频分析） ---
 @app.post("/api/knowledge")
 def get_knowledge(body: KnowledgeRequest):
-    """根据话题搜索背景知识"""
-    return search_topic_knowledge(body.topic)
+    """根据话题搜索背景知识，并行分析最多 4 个 YouTube 视频的字幕（磁盘缓存）"""
+    topic = body.topic
+    ck = _cache_key(topic, "knowledge")
+    cached = _cache_get(ck)
+    if cached:
+        log.info("Knowledge cache hit: %s", topic[:60])
+        return cached
+
+    log.info("Knowledge API start: topic=%s", topic[:80])
+    t0 = time.time()
+    result = search_topic_knowledge(topic)
+    log.info("Topic search done: %d sources in %.1fs", len(result.get("sources") or []), time.time() - t0)
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from crawler.src.video_analyzer import analyze_video
+
+    youtube_videos = []
+    for src in (result.get("sources") or []):
+        if src.get("platform") == "youtube" and "watch?v=" in src.get("url", ""):
+            if len(youtube_videos) >= 4:
+                break
+            vid = src["url"].split("watch?v=")[-1].split("&")[0]
+            youtube_videos.append((src, vid))
+
+    analyses = [None] * len(youtube_videos)
+    t1 = time.time()
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        fut_map = {}
+        for i, (src, vid) in enumerate(youtube_videos):
+            fut = pool.submit(analyze_video, vid)
+            fut_map[fut] = (i, src)
+            log.info("  Video analysis started [%d/%d]: %s", i + 1, len(youtube_videos), src.get('title', '')[:50])
+
+        for fut in as_completed(fut_map):
+            i, src = fut_map[fut]
+            try:
+                raw = (fut.result() or "")
+                conflict = ""
+                drama = ""
+                content = raw[:1000]
+                lines = raw.split("\n")
+                rest_lines = []
+                for line in lines:
+                    if line.startswith("Conflict:"):
+                        conflict = line[9:].strip()
+                    elif line.startswith("Drama:"):
+                        drama = line[6:].strip()
+                    else:
+                        rest_lines.append(line)
+                if conflict or drama:
+                    content = "\n".join(rest_lines).strip()[:1000]
+                else:
+                    content = raw[:1000]
+                if content.startswith("Title:") and "Description:" in content:
+                    content = ""
+                if raw:
+                    analyses[i] = {
+                        "title": src["title"],
+                        "url": src["url"],
+                        "summary": src.get("summary", "")[:200],
+                        "conflict": conflict,
+                        "drama": drama,
+                        "content": content,
+                    }
+                log.info("  Video analysis done [%d/%d]: %s (%.1fs)", i + 1, len(youtube_videos), src.get('title', '')[:40], time.time() - t1)
+            except Exception as e:
+                log.error("Video analysis failed [%d/%d]: %s -> %s", i + 1, len(youtube_videos), src.get('title', '')[:40], e)
+
+    result["analyses"] = [a for a in analyses if a]
+    elapsed = time.time() - t0
+    log.info("Knowledge API done: %d analyses in %.1fs", len(result["analyses"]), elapsed)
+    _cache_set(ck, result)
+    return result
 
 # --- B3: 分镜生成 API ---
 @app.post("/api/storyboard")
 def generate_storyboard(body: StoryboardRequest):
-    """调用 AI 引擎生成分镜脚本 (Storyboard)"""
-    if run_pipeline is None:
-        return {
+    """调用 AI 引擎生成分镜脚本 (Storyboard，磁盘缓存)"""
+    # If specific version requested, serve directly from cache
+    if body.version:
+        vck = os.path.join(_CACHE_DIR, f"storyboard_{body.version}.json")
+        cached = _cache_get(vck)
+        if cached:
+            log.info("Storyboard version loaded: %s (%s)", body.topic[:60], body.version)
+            return cached
+        log.warning("Requested version not found: %s", body.version)
+
+    # Cache key = topic + hash of analyses + scene_count (different counts = different results)
+    analyses_hash = hashlib.md5(str(body.analyses).encode("utf-8")).hexdigest()[:12]
+    ck = _cache_key(f"{body.topic}_{analyses_hash}_sc{body.scene_count}", "storyboard")
+    if not body.refresh:
+        cached = _cache_get(ck)
+        if cached:
+            log.info("Storyboard cache hit: %s (sc=%s)", body.topic[:60], body.scene_count)
+            return cached
+
+    log.info("Storyboard API start: %s (sc=%s)", body.topic[:60], body.scene_count)
+    sb = None
+    pipeline_error = None
+
+    if run_pipeline is not None:
+        result = run_pipeline(body.topic, body.knowledge, storyboard_only=True, analyses=body.analyses, scene_count=body.scene_count)
+        sb = result.get("storyboard")
+        pipeline_error = result.get("error")
+
+    if not sb:
+        log.warning(
+            "Storyboard generation failed — using placeholder scenes. topic=%r error=%s",
+            body.topic[:60], pipeline_error or "run_pipeline unavailable or returned None",
+        )
+        sb = {
             "title": body.topic,
             "description": f"Storyboard for: {body.topic}",
             "scenes": [
@@ -102,12 +324,26 @@ def generate_storyboard(body: StoryboardRequest):
                 for i in range(4)
             ],
         }
-    result = run_pipeline(body.topic, body.knowledge, storyboard_only=True)
-    return result.get("storyboard", {})
+
+    # Replace LLM story_background with real video analysis from captions
+    try:
+        from crawler.src.video_analyzer import analyze_video
+        for src in (body.knowledge or []):
+            if src.get("platform") == "youtube" and "watch?v=" in src.get("url", ""):
+                vid = src["url"].split("watch?v=")[-1].split("&")[0]
+                if vid:
+                    analysis = analyze_video(vid)
+                    if analysis:
+                        sb["story_background"] = "🎬 Video Content Breakdown\n" + analysis
+                    break
+    except Exception:
+        pass
+
+    _cache_set(ck, sb)
+    return sb
 
 # --- B4: 视频生成（异步逻辑） ---
 
-# Demo video files from previously generated Kling V3 Backrooms content
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _DEMO_VIDEOS = {
     "scene_clips": [
@@ -117,13 +353,13 @@ _DEMO_VIDEOS = {
     "final": os.path.join(_PROJECT_ROOT, "core_engine", "output", "videos", "backrooms_kling", "backrooms_act1_act2_preview.mp4"),
 }
 
-async def run_video_pipeline_async(task_id: str, storyboard: dict):
-    """异步 Pipeline 运行并更新状态（事件格式与前端 WebSocket 对齐）
+async def run_video_pipeline_async(task_id: str, storyboard: dict, video_provider: str = "openrouter", video_model: str = ""):
+    """异步 Pipeline 运行并更新状态。
 
-    当前使用 demo 模式：播放已生成的后室 Kling V3 视频。
+    优先调用真实 run_pipeline()，失败时回退到 demo 模式。
     """
-    demo_clips = [p for p in _DEMO_VIDEOS["scene_clips"] if os.path.exists(p)]
-    total_scenes = len(demo_clips) if demo_clips else len(storyboard.get("scenes", [])) or 1
+    scenes = storyboard.get("scenes", [])
+    total_scenes = len(scenes) or 1
 
     video_tasks[task_id] = {
         "status": "processing",
@@ -133,22 +369,66 @@ async def run_video_pipeline_async(task_id: str, storyboard: dict):
         "total": total_scenes,
     }
 
+    # Initialize scene_start events upfront
     for i in range(1, total_scenes + 1):
         video_tasks[task_id]["events"].append(
             {"event": "scene_start", "scene": i, "total": total_scenes}
         )
-        video_tasks[task_id]["scene"] = i
 
+    def on_scene_done(scene_idx: int, total: int, clip_path: str | None = None):
+        """同步回调 — 由 Pipeline 的 on_scene_done 触发"""
+        video_tasks[task_id]["events"].append(
+            {"event": "scene_done", "scene": scene_idx, "total": total, "preview_url": clip_path or ""}
+        )
+        video_tasks[task_id]["progress"] = int((scene_idx / total) * 100)
+        log.info("  Task %s: Scene %d/%d done (real pipeline)", task_id[:8], scene_idx, total)
+
+    # 尝试真实 Pipeline
+    if run_pipeline is not None and scenes:
+        try:
+            log.info("  Task %s: Starting real pipeline for %s...", task_id[:8], scenes[0].get('visual_prompt', '')[:40])
+            result = await asyncio.to_thread(
+                run_pipeline,
+                topic=storyboard.get("title", "custom"),
+                storyboard_dict=storyboard,
+                project_id=task_id,
+                video_provider=video_provider,
+                video_model=video_model,
+                on_scene_done=on_scene_done,
+            )
+
+            final_path = result.get("final_path")
+            if final_path and os.path.exists(final_path):
+                video_tasks[task_id]["final_path"] = final_path
+                video_tasks[task_id]["status"] = "complete"
+                video_tasks[task_id]["events"].append(
+                    {"event": "complete", "video_url": f"/api/video/download/{task_id}"}
+                )
+                log.info("  Task %s: Pipeline complete -> %s", task_id[:8], final_path)
+                return
+            else:
+                log.warning("  Task %s: Real pipeline returned no output, using demo fallback", task_id[:8])
+        except Exception as e:
+            log.error("  Task %s: Real pipeline failed: %s", task_id[:8], e)
+
+    # 回退到 demo 模式
+    log.info("  Task %s: Using demo mode (fallback)", task_id[:8])
+    demo_clips = [p for p in _DEMO_VIDEOS["scene_clips"] if os.path.exists(p)]
+    demo_total = len(demo_clips) if demo_clips else total_scenes
+
+    for i in range(1, demo_total + 1):
+        video_tasks[task_id]["events"].append(
+            {"event": "scene_start", "scene": i, "total": demo_total}
+        )
+        video_tasks[task_id]["scene"] = i
         await asyncio.sleep(3)
 
         preview_url = f"/api/video/clip/{task_id}/{i}" if i <= len(demo_clips) else ""
-        video_tasks[task_id]["progress"] = int((i / total_scenes) * 100)
+        video_tasks[task_id]["progress"] = int((i / demo_total) * 100)
         video_tasks[task_id]["events"].append(
-            {"event": "scene_done", "scene": i, "total": total_scenes, "preview_url": preview_url}
+            {"event": "scene_done", "scene": i, "total": demo_total, "preview_url": preview_url}
         )
-        print(f"Task {task_id}: Scene {i}/{total_scenes} done")
 
-    # Store demo video path for download
     final_path = _DEMO_VIDEOS["final"]
     video_tasks[task_id]["final_path"] = final_path if os.path.exists(final_path) else None
     video_tasks[task_id]["demo_clips"] = demo_clips
@@ -161,7 +441,7 @@ async def run_video_pipeline_async(task_id: str, storyboard: dict):
 async def start_video(body: VideoRequest, background_tasks: BackgroundTasks):
     """启动异步视频生成任务"""
     task_id = str(uuid.uuid4())
-    background_tasks.add_task(run_video_pipeline_async, task_id, body.storyboard)
+    background_tasks.add_task(run_video_pipeline_async, task_id, body.storyboard, body.video_provider, body.video_model)
     return {"task_id": task_id}
 
 @app.get("/api/video/status/{task_id}")
@@ -187,7 +467,7 @@ async def video_ws(websocket: WebSocket, task_id: str):
                     break
             await asyncio.sleep(1)
     except WebSocketDisconnect:
-        print(f"Client disconnected from task {task_id}")
+        log.info("Client disconnected from task %s", task_id[:8])
 
 # --- B5: 视频下载 & 片段预览 ---
 @app.get("/api/video/clip/{task_id}/{scene_idx}")
@@ -209,6 +489,58 @@ def download_video(task_id: str):
         return FileResponse(task["final_path"], media_type="video/mp4", filename=f"aiedio_{task_id[:8]}.mp4")
     return {"message": "Video not ready yet"}
 
+# --- 缓存列表 ---
+@app.get("/api/cache/topics")
+def list_cached_topics():
+    """返回已缓存的 topics 列表（供前端选择）"""
+    topics = []
+    seen = set()
+    for fname in os.listdir(_CACHE_DIR):
+        if fname.startswith("knowledge_") and fname.endswith(".json"):
+            try:
+                with open(os.path.join(_CACHE_DIR, fname), "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    t = data.get("topic", "")
+                if t and t not in seen:
+                    seen.add(t)
+                    # Find all storyboard versions for this topic
+                    sb_versions = []
+                    for sf in os.listdir(_CACHE_DIR):
+                        if sf.startswith("storyboard_") and sf.endswith(".json"):
+                            try:
+                                sd = json.load(open(os.path.join(_CACHE_DIR, sf)))
+                                if sd.get("title") == t:
+                                    scenes = sd.get("scenes", [])
+                                    bg = sd.get("story_background", "")[:120]
+                                    sb_versions.append({
+                                        "scenes": len(scenes),
+                                        "preview": bg,
+                                        "cache_key": sf.replace("storyboard_", "").replace(".json", ""),
+                                    })
+                            except Exception:
+                                pass
+                    topics.append({
+                        "topic": t,
+                        "sources": len(data.get("sources", [])),
+                        "analyses": len(data.get("analyses", [])),
+                        "cache_key": fname.replace("knowledge_", "").replace(".json", ""),
+                        "versions": sb_versions,
+                    })
+            except Exception:
+                pass
+    topics.sort(key=lambda x: x["topic"])
+    return {"topics": topics}
+
+# --- 视频模型列表 ---
+@app.get("/api/video/models")
+def list_video_models():
+    """返回可用的视频生成模型列表（供前端下拉选择）"""
+    return {"models": [
+        {"id": "openrouter", "name": "Kling Video O1 (OpenRouter)", "provider": "openrouter"},
+        {"id": "dashscope",  "name": "Wan 2.7 T2V (阿里百炼)",     "provider": "dashscope"},
+        {"id": "happyhorse", "name": "Happyhorse T2V (阿里百炼)",  "provider": "happyhorse"},
+    ]}
+
 # --- 基础页面路由 ---
 @app.get("/showcase")
 def serve_showcase():
@@ -220,104 +552,76 @@ def serve_showcase():
 
 @app.get("/api/showcase/videos")
 def list_showcase_videos():
-    """列出所有已生成的视频、图片和分镜数据供展示页使用"""
+    """自动扫描 core_engine/output/videos/ 下所有项目，返回展示数据"""
     output_dir = os.path.join(_PROJECT_ROOT, "core_engine", "output")
+    videos_dir = os.path.join(output_dir, "videos")
+    assets_dir = os.path.join(output_dir, "assets")
     result = {"projects": []}
 
-    projects_meta = [
-        {
-            "id": "backrooms_kling",
-            "title": "🏚️ Backrooms Horror — Kling V3",
-            "desc": "Horror short film generated with Kling V3 model. Pipeline: AI first-frame → I2V animation.",
-            "model": "Kling V3",
-            "video_dir": "videos/backrooms_kling",
-            "asset_dir": "assets",
-            "storyboard": "storyboards/storyboard_1775561440.json",
-            "final": "backrooms_act1_act2_preview.mp4",
-            "clips": ["kling_v3_video_1775474758.mp4", "kling_v3_video_1775474988.mp4"],
-            "images": ["kling_v3_1775466427.png"],
-        },
-        {
-            "id": "backrooms_continuity",
-            "title": "🔗 Backrooms Continuity — wan2.7 I2V",
-            "desc": "4-scene continuity experiment: last frame of scene N → first frame of scene N+1, ensuring visual coherence.",
-            "model": "wan2.7 (DashScope I2V)",
-            "video_dir": "videos/backrooms_continuity",
-            "asset_dir": "assets/backrooms_continuity",
-            "storyboard": "storyboards/storyboard_1775561440.json",
-            "final": "backrooms_continuity_final.mp4",
-            "clips": ["dashscope_i2v_1775467158.mp4", "dashscope_i2v_1775469275.mp4", "dashscope_i2v_1775470681.mp4", "scene2_recovered.mp4"],
-            "images": ["kling_v3_1775466556.png", "kling_v3_1775467196.png", "kling_v3_1775468703.png", "kling_v3_1775469350.png"],
-        },
-        {
-            "id": "backrooms_v2",
-            "title": "🎬 Backrooms V2 Final — Mixed Composition",
-            "desc": "4 scenes + BGM mixing + post-production. MoviePy multi-track concatenation.",
-            "model": "wan2.7 + MoviePy",
-            "video_dir": "videos/backrooms_final_v2",
-            "asset_dir": None,
-            "storyboard": "storyboards/storyboard_1775561440.json",
-            "final": "backrooms_v2_final.mp4",
-            "clips": ["mixed_scene1.mp4", "mixed_scene2.mp4", "mixed_scene3.mp4", "mixed_scene4.mp4"],
-            "images": [],
-        },
-        {
-            "id": "backrooms_v3",
-            "title": "✨ Backrooms V3 — Final Delivery",
-            "desc": "Final delivery version. Fully automated end-to-end pipeline generation.",
-            "model": "Pipeline V3",
-            "video_dir": "videos/backrooms_v3",
-            "asset_dir": None,
-            "storyboard": "storyboards/storyboard_1775561440.json",
-            "final": "backrooms_v3_final.mp4",
-            "clips": [],
-            "images": [],
-        },
-    ]
+    if not os.path.isdir(videos_dir):
+        return result
 
-    for pm in projects_meta:
-        proj = {"id": pm["id"], "title": pm["title"], "desc": pm["desc"], "model": pm["model"]}
+    # Scan all subdirectories
+    dirs = sorted(os.listdir(videos_dir), key=lambda d: os.path.getmtime(os.path.join(videos_dir, d)), reverse=True)
 
-        # Final video
-        fpath = os.path.join(output_dir, pm["video_dir"], pm["final"])
-        if os.path.exists(fpath):
-            proj["final_video"] = f"/api/showcase/file/{pm['video_dir']}/{pm['final']}"
-            proj["final_size_mb"] = round(os.path.getsize(fpath) / 1024 / 1024, 1)
+    for dirname in dirs:
+        vdir = os.path.join(videos_dir, dirname)
+        if not os.path.isdir(vdir):
+            continue
+
+        proj = {"id": dirname, "clips": [], "images": [], "storyboard": None}
+
+        # Read metadata.json if available
+        meta_path = os.path.join(vdir, "metadata.json")
+        meta = {}
+        if os.path.exists(meta_path):
+            try:
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+            except Exception:
+                pass
+
+        proj["title"] = meta.get("title", dirname)
+        proj["desc"] = f"{meta.get('scenes', '?')} scenes, {meta.get('total_duration', '?')}s total"
+        proj["model"] = "DashScope I2V" if any("dashscope" in f.lower() for f in os.listdir(vdir)) else "Pipeline"
+
+        # Find final video (*_final.mp4 or fallback to final_path from metadata)
+        final_video = None
+        final_meta = meta.get("final_path")
+        if final_meta and os.path.exists(final_meta):
+            fname = os.path.basename(final_meta)
+            final_video = f"/api/showcase/file/videos/{dirname}/{fname}"
+            proj["final_size_mb"] = round(os.path.getsize(final_meta) / 1024 / 1024, 1)
         else:
-            proj["final_video"] = None
+            for f in os.listdir(vdir):
+                if f.endswith("_final.mp4"):
+                    final_video = f"/api/showcase/file/videos/{dirname}/{f}"
+                    proj["final_size_mb"] = round(os.path.getsize(os.path.join(vdir, f)) / 1024 / 1024, 1)
+                    break
+        proj["final_video"] = final_video
 
-        # Clips
-        proj["clips"] = []
-        for c in pm.get("clips", []):
-            cp = os.path.join(output_dir, pm["video_dir"], c)
-            if os.path.exists(cp):
+        # Find all mp4 clips (exclude _final.mp4)
+        for f in sorted(os.listdir(vdir)):
+            if f.endswith(".mp4") and not f.endswith("_final.mp4"):
                 proj["clips"].append({
-                    "name": c,
-                    "url": f"/api/showcase/file/{pm['video_dir']}/{c}",
-                    "size_mb": round(os.path.getsize(cp) / 1024 / 1024, 1),
+                    "name": f,
+                    "url": f"/api/showcase/file/videos/{dirname}/{f}",
+                    "size_mb": round(os.path.getsize(os.path.join(vdir, f)) / 1024 / 1024, 1),
                 })
 
-        # Images
-        proj["images"] = []
-        if pm.get("asset_dir"):
-            for img in pm.get("images", []):
-                ip = os.path.join(output_dir, pm["asset_dir"], img)
-                if os.path.exists(ip):
-                    proj["images"].append({
-                        "name": img,
-                        "url": f"/api/showcase/file/{pm['asset_dir']}/{img}",
-                    })
+        # Skip projects with no video content at all (only placeholder txt files)
+        if not proj["clips"] and not proj["final_video"]:
+            continue
 
-        # Storyboard
-        sp = os.path.join(output_dir, pm.get("storyboard", ""))
-        if os.path.exists(sp):
-            try:
-                with open(sp, "r", encoding="utf-8") as f:
-                    proj["storyboard"] = json.load(f)
-            except Exception:
-                proj["storyboard"] = None
-        else:
-            proj["storyboard"] = None
+        # Find images in corresponding assets directory
+        adir = os.path.join(assets_dir, dirname)
+        if os.path.isdir(adir):
+            for f in sorted(os.listdir(adir)):
+                if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
+                    proj["images"].append({
+                        "name": f,
+                        "url": f"/api/showcase/file/assets/{dirname}/{f}",
+                    })
 
         result["projects"].append(proj)
 
@@ -340,6 +644,14 @@ def serve_frontend():
     if os.path.exists(new_html):
         return FileResponse(new_html)
     return FileResponse(os.path.join(_CLIENT_DIR, "index.html"))
+
+@app.get("/storyboard")
+def serve_storyboard():
+    """Serve the standalone storyboard page"""
+    sb = os.path.join(_CLIENT_DIR, "storyboard.html")
+    if os.path.exists(sb):
+        return FileResponse(sb)
+    return {"message": "Storyboard page not found"}
 
 @app.get("/style.css")
 def serve_css():

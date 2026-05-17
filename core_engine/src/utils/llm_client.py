@@ -12,7 +12,7 @@ import requests as req
 _OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY", "")
 _ZHIPU_KEY = os.getenv("ZHIPU_API_KEY", "")
 _OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-_OPENROUTER_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
+_OPENROUTER_MODEL = "qwen/qwen3.6-flash"
 
 
 def call_llm(
@@ -68,8 +68,30 @@ def _call_openrouter(prompt: str, system_msg: str, timeout: int) -> str:
         },
         timeout=timeout,
     )
-    resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"]
+    if not resp.ok:
+        raise RuntimeError(
+            f"OpenRouter HTTP {resp.status_code} (model={_OPENROUTER_MODEL}): "
+            f"{resp.text[:500]}"
+        )
+    try:
+        data = resp.json()
+    except ValueError as e:
+        raise RuntimeError(
+            f"OpenRouter returned non-JSON (status={resp.status_code}): "
+            f"{resp.text[:500]!r}"
+        ) from e
+    try:
+        content = data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as e:
+        raise RuntimeError(
+            f"OpenRouter response missing 'choices[0].message.content'. "
+            f"Full payload: {data}"
+        ) from e
+    if not content or not content.strip():
+        raise RuntimeError(
+            f"OpenRouter returned empty content. Full payload: {data}"
+        )
+    return content
 
 
 def _call_zhipu(prompt: str, system_msg: str) -> str:
