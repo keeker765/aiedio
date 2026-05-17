@@ -1,10 +1,4 @@
-<<<<<<< HEAD
-
-from fastapi import FastAPI
-
-=======
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks
->>>>>>> 47cfbe14154ccb8403958389d3e2888ee9b32411
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
